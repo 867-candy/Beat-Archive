@@ -1,6 +1,6 @@
 {
   "name": "beat-archive",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "beatorajaスコア分析ツール",
   "main": "main.js",
   "scripts": {
@@ -10,7 +10,11 @@
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "dist": "npm run build",
-    "package": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"sample-db|config.json|local-data.db|debug|test|testdata\" --executable-name=\"Beat-Archive-Portable\""
+    "package": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"sample-db|config.json|local-data.db|debug|test|testdata\" --executable-name=\"Beat-Archive-Portable\"",
+    "version:patch": "npm version patch && git push origin main && git push origin --tags",
+    "version:minor": "npm version minor && git push origin main && git push origin --tags",
+    "version:major": "npm version major && git push origin main && git push origin --tags",
+    "release": "npm run build && npm run version:patch"
   },
   "keywords": [
     "beatoraja",

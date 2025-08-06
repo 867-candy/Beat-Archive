@@ -10,11 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: windows-latest
         
     steps:
     - name: Checkout repository
@@ -28,48 +24,23 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
-      
-    - name: Install native dependencies (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libnss3-dev libatk-bridge2.0-dev libdrm2 libgtk-3-dev libgbm-dev
         
     - name: Build application
-      run: npm run build
+      run: npm run build:win
       env:
         # GitHub Actionsでは署名を無効化
         CSC_IDENTITY_AUTO_DISCOVERY: false
         
     - name: Upload Windows artifacts
-      if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
       with:
         name: windows-build
         path: dist/*.exe
-        
-    - name: Upload macOS artifacts
-      if: matrix.os == 'macos-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: macos-build
-        path: dist/*.dmg
-        
-    - name: Upload Linux artifacts
-      if: matrix.os == 'ubuntu-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: linux-build
-        path: dist/*.AppImage
 
   # リリース時の配布用ビルド
   release-build:
     if: github.event_name == 'release'
-    runs-on: ${{ matrix.os }}
-    
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: windows-latest
         
     steps:
     - name: Checkout repository
@@ -83,21 +54,14 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
-      
-    - name: Install native dependencies (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libnss3-dev libatk-bridge2.0-dev libdrm2 libgtk-3-dev libgbm-dev
         
     - name: Build and publish
-      run: npm run build
+      run: npm run build:win
       env:
         CSC_IDENTITY_AUTO_DISCOVERY: false
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Upload release assets (Windows)
-      if: matrix.os == 'windows-latest'
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -105,26 +69,4 @@ jobs:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: dist/Beat Archive Setup *.exe
         asset_name: Beat-Archive-Setup-Windows.exe
-        asset_content_type: application/octet-stream
-        
-    - name: Upload release assets (macOS)
-      if: matrix.os == 'macos-latest'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: dist/Beat Archive-*.dmg
-        asset_name: Beat-Archive-macOS.dmg
-        asset_content_type: application/octet-stream
-        
-    - name: Upload release assets (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: dist/Beat Archive-*.AppImage
-        asset_name: Beat-Archive-Linux.AppImage
         asset_content_type: application/octet-stream

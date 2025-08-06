@@ -75,26 +75,42 @@ npm run dev
    - Windows版のクイックビルド
 
 2. **Build and Release (`release.yml`)**
-   - 全プラットフォーム（Windows、macOS、Linux）での自動ビルド
+   - Windows向けの自動ビルド
    - タグプッシュ時の自動リリース作成
    - ポータブル版の作成
 
 3. **Build Beat Archive (`build.yml`)**
-   - フル機能ビルドワークフロー
+   - Windows向けフル機能ビルドワークフロー
    - リリースアセットの自動アップロード
 
 ### ビルド成果物
 
 - **Windows**: `.exe` インストーラー および ポータブル版
-- **macOS**: `.dmg` インストーラー
-- **Linux**: `.AppImage`、`.deb`、`.rpm` パッケージ
 
 ### リリース方法
 
-1. バージョンタグを作成してプッシュ:
+1. **バージョンアップとリリース**:
+   ```bash
+   # パッチバージョン更新 (1.1.0 → 1.1.1)
+   npm run version:patch
+   
+   # マイナーバージョン更新 (1.1.0 → 1.2.0)
+   npm run version:minor
+   
+   # メジャーバージョン更新 (1.1.0 → 2.0.0)
+   npm run version:major
+   ```
+
+2. **手動でのタグ作成**:
    ```bash
    git tag v1.1.0
    git push origin v1.1.0
    ```
 
-2. GitHub Actionsが自動的にビルドしてリリースを作成します
+3. GitHub Actionsが自動的にビルドしてリリースを作成します
+
+### バージョン管理
+
+- バージョン番号は[セマンティックバージョニング](https://semver.org/)に従います
+- 変更履歴は`CHANGELOG.md`で管理します
+- リリースは自動化されており、タグプッシュで実行されます
