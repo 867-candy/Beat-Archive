@@ -63,3 +63,38 @@ npm run dev
 - テストデータ作成: `testdata/` ディレクトリ
 
 詳細は各ディレクトリの`README.md`を参照してください。
+
+## GitHub Actions
+
+このプロジェクトには以下のGitHub Actionsワークフローが設定されています：
+
+### CI/CD ワークフロー
+
+1. **CI (`ci.yml`)**
+   - プッシュ・プルリクエスト時の軽量なビルドチェック
+   - Windows版のクイックビルド
+
+2. **Build and Release (`release.yml`)**
+   - 全プラットフォーム（Windows、macOS、Linux）での自動ビルド
+   - タグプッシュ時の自動リリース作成
+   - ポータブル版の作成
+
+3. **Build Beat Archive (`build.yml`)**
+   - フル機能ビルドワークフロー
+   - リリースアセットの自動アップロード
+
+### ビルド成果物
+
+- **Windows**: `.exe` インストーラー および ポータブル版
+- **macOS**: `.dmg` インストーラー
+- **Linux**: `.AppImage`、`.deb`、`.rpm` パッケージ
+
+### リリース方法
+
+1. バージョンタグを作成してプッシュ:
+   ```bash
+   git tag v1.1.0
+   git push origin v1.1.0
+   ```
+
+2. GitHub Actionsが自動的にビルドしてリリースを作成します
