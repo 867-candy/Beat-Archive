@@ -85,7 +85,7 @@ async function addTable() {
   const url = urlEl.value.trim();
   
   if (!url) {
-    showStatus('URLを入力してください', 'error');
+    showTableStatus('URLを入力してください', 'error');
     urlEl.focus();
     return;
   }
@@ -94,14 +94,14 @@ async function addTable() {
   try {
     new URL(url);
   } catch {
-    showStatus('正しいURLを入力してください', 'error');
+    showTableStatus('正しいURLを入力してください', 'error');
     urlEl.focus();
     return;
   }
   
   // 同じURLが既に存在するかチェック
   if (state.difficultyTables.some(table => table.url === url)) {
-    showStatus('同じURLの難易度表が既に存在します', 'error');
+    showTableStatus('同じURLの難易度表が既に存在します', 'error');
     urlEl.focus();
     return;
   }
@@ -109,19 +109,19 @@ async function addTable() {
   // 表名が空の場合、HeaderからTableNameを取得を試行
   if (!name) {
     try {
-      showStatus('難易度表データを読み込み中...', 'info');
+      showTableStatus('難易度表データを読み込み中...', 'info');
       const tableData = await window.api.loadDifficultyTable(url);
       if (tableData && tableData.header && tableData.header.name) {
         name = tableData.header.name;
         nameEl.value = name; // フィールドにも反映
-        showStatus('難易度表の名前を自動取得しました', 'success');
+        showTableStatus('難易度表の名前を自動取得しました', 'success');
       } else {
-        showStatus('難易度表から名前を取得できませんでした。手動で入力してください', 'error');
+        showTableStatus('難易度表から名前を取得できませんでした。手動で入力してください', 'error');
         nameEl.focus();
         return;
       }
     } catch (error) {
-      showStatus('難易度表の読み込みに失敗しました: ' + error.message, 'error');
+      showTableStatus('難易度表の読み込みに失敗しました: ' + error.message, 'error');
       nameEl.focus();
       return;
     }
@@ -153,9 +153,9 @@ async function addTable() {
       difficultyTables: state.difficultyTables
     };
     await window.api.updateConfig(newConfig);
-    showStatus(`難易度表「${name}」を追加し、設定を保存しました`, 'success');
+    showTableStatus(`難易度表「${name}」を追加し、設定を保存しました`, 'success');
   } catch (error) {
-    showStatus(`難易度表「${name}」を追加しましたが、設定の保存に失敗しました: ${error.message}`, 'error');
+    showTableStatus(`難易度表「${name}」を追加しましたが、設定の保存に失敗しました: ${error.message}`, 'error');
   }
   
   // フォーカスを表名フィールドに移動
@@ -337,9 +337,9 @@ async function updatePriorityFromOrder() {
       difficultyTables: state.difficultyTables
     };
     await window.api.updateConfig(newConfig);
-    showStatus('優先順位を更新しました', 'success');
+    showTableStatus('優先順位を更新しました', 'success');
   } catch (error) {
-    showStatus(`優先順位の保存に失敗しました: ${error.message}`, 'error');
+    showTableStatus(`優先順位の保存に失敗しました: ${error.message}`, 'error');
   }
 }
 
@@ -380,22 +380,22 @@ async function reorderTables(fromIndex, toIndex) {
       difficultyTables: state.difficultyTables
     };
     await window.api.updateConfig(newConfig);
-    showStatus('優先順位を更新しました', 'success');
+    showTableStatus('優先順位を更新しました', 'success');
   } catch (error) {
-    showStatus(`優先順位の保存に失敗しました: ${error.message}`, 'error');
+    showTableStatus(`優先順位の保存に失敗しました: ${error.message}`, 'error');
   }
 }
 
 // 優先順位を更新
 async function updatePriority(originalIndex, newPriority) {
   if (originalIndex < 0 || originalIndex >= state.difficultyTables.length) {
-    showStatus('無効なテーブルインデックスです', 'error');
+    showTableStatus('無効なテーブルインデックスです', 'error');
     return;
   }
   
   const priority = parseInt(newPriority);
   if (isNaN(priority) || priority < 1) {
-    showStatus('優先順位は1以上の数値を入力してください', 'error');
+    showTableStatus('優先順位は1以上の数値を入力してください', 'error');
     return;
   }
   
@@ -409,9 +409,9 @@ async function updatePriority(originalIndex, newPriority) {
       difficultyTables: state.difficultyTables
     };
     await window.api.updateConfig(newConfig);
-    showStatus('優先順位を更新しました', 'success');
+    showTableStatus('優先順位を更新しました', 'success');
   } catch (error) {
-    showStatus(`優先順位の保存に失敗しました: ${error.message}`, 'error');
+    showTableStatus(`優先順位の保存に失敗しました: ${error.message}`, 'error');
   }
 }
 
@@ -447,9 +447,9 @@ async function moveTableUp(originalIndex) {
         difficultyTables: state.difficultyTables
       };
       await window.api.updateConfig(newConfig);
-      showStatus('順序を更新しました', 'success');
+      showTableStatus('順序を更新しました', 'success');
     } catch (error) {
-      showStatus(`順序の保存に失敗しました: ${error.message}`, 'error');
+      showTableStatus(`順序の保存に失敗しました: ${error.message}`, 'error');
     }
   }
 }
@@ -486,9 +486,9 @@ async function moveTableDown(originalIndex) {
         difficultyTables: state.difficultyTables
       };
       await window.api.updateConfig(newConfig);
-      showStatus('順序を更新しました', 'success');
+      showTableStatus('順序を更新しました', 'success');
     } catch (error) {
-      showStatus(`順序の保存に失敗しました: ${error.message}`, 'error');
+      showTableStatus(`順序の保存に失敗しました: ${error.message}`, 'error');
     }
   }
 }
@@ -497,7 +497,7 @@ async function moveTableDown(originalIndex) {
 async function removeTable(originalIndex) {
   // originalIndexは元の配列でのインデックス
   if (originalIndex < 0 || originalIndex >= state.difficultyTables.length) {
-    showStatus('無効なテーブルインデックスです', 'error');
+    showTableStatus('無効なテーブルインデックスです', 'error');
     return;
   }
   
@@ -521,9 +521,9 @@ async function removeTable(originalIndex) {
         difficultyTables: state.difficultyTables
       };
       await window.api.updateConfig(newConfig);
-      showStatus(`難易度表「${tableToRemove.name}」を削除し、設定を保存しました`, 'success');
+      showTableStatus(`難易度表「${tableToRemove.name}」を削除し、設定を保存しました`, 'success');
     } catch (error) {
-      showStatus(`難易度表「${tableToRemove.name}」を削除しましたが、設定の保存に失敗しました: ${error.message}`, 'error');
+      showTableStatus(`難易度表「${tableToRemove.name}」を削除しましたが、設定の保存に失敗しました: ${error.message}`, 'error');
     }
   }
 }
@@ -531,6 +531,19 @@ async function removeTable(originalIndex) {
 // ステータス表示
 function showStatus(message, type = 'success') {
   const statusEl = document.getElementById('status');
+  statusEl.textContent = message;
+  statusEl.className = `status ${type}`;
+  statusEl.style.display = 'block';
+  
+  // 3秒後に自動的に非表示
+  setTimeout(() => {
+    statusEl.style.display = 'none';
+  }, 3000);
+}
+
+// 難易度表ステータス表示（新規追加）
+function showTableStatus(message, type = 'success') {
+  const statusEl = document.getElementById('tableStatus');
   statusEl.textContent = message;
   statusEl.className = `status ${type}`;
   statusEl.style.display = 'block';

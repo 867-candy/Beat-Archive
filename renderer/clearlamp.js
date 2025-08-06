@@ -707,7 +707,7 @@ function resetDisplay() {
   // レベルフィルタもリセット
   const levelSelect = document.getElementById('levelSelect');
   if (levelSelect) {
-    levelSelect.innerHTML = '<option value="">読み込み中...</option>';
+    levelSelect.innerHTML = '<option value="">難易度表を選択してください</option>';
   }
   state.selectedLevels.clear();
   

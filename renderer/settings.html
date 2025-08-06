@@ -111,11 +111,14 @@
       color: #721c24;
       border: 1px solid #f5c6cb;
     }
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
     .table-list {
       border: 1px solid #ddd;
       border-radius: 4px;
-      max-height: 300px;
-      overflow-y: auto;
       margin-bottom: 15px;
     }
     .table-item {
@@ -340,6 +343,8 @@
           <button class="btn-add" id="addTableBtn">追加</button>
         </div>
       </div>
+      
+      <div class="status" id="tableStatus"></div>
     </div>
 
     <div class="setting-group">
