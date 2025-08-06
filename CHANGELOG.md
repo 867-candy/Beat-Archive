@@ -13,7 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-## [1.1.1] - 2025-08-06
+## [1.1.2] - 2025-08-06
+
+### Changed
+- 設定ページの表名入力を削除
+- DBファイルの設定にて、Playerフォルダを指定すると関連ファイルを読み込むように変更
+
+### Fixed
+- MAX,FCの楽曲別クリア状況のホバー色が変化しない不具合を修正
+- FAILEDのホバー色が暗い問題を修正
+- 難易度表を読み込んでいないときの楽曲別クリア状況のレベルフィルタの表記を修正
+- 難易度表設定のダイアログを分けて出すように修正 
+
+## [1.1.1] - 2025-08-05
 
 ### Changed
 - 楽曲別クリア状況のホバー色をクリアタイプに応じて変更するように修正
@@ -22,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Overjoyの★★0が★★?になる不具合を修正
 
-## [1.1.0] - 2025-08-06
+## [1.1.0] - 2025-08-05
 
 ### Added
 - GitHub Actions による自動ビルド・リリース機能
@@ -39,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - レベルフィルタで0が最後尾にくる不具合を修正
 - ミスカウントが0のときに999999となる不具合の修正
 
-## [1.0.0] - 2025-08-06
+## [1.0.0] - 2025-08-05
 
 ### Added
 - 初期リリース
