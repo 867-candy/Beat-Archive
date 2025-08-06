@@ -13,7 +13,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-## [1.1.4] - 2025-08-06
+## [1.1.6] - 2025-08-06
+
+### Added
+- 更新曲一覧で使用する難易度表の選択機能
+- 複数の難易度表を更新曲一覧で使用できる機能
+
+### Changed
+- 難易度表設定で各表にチェックボックスを追加し、複数選択を可能に
+- デフォルト難易度表の選択UIを複数選択方式に変更
+- 設定データ構造をdefaultTableUrlからdefaultTableUrls（配列）に変更
+- チェックボックス変更時の即座設定保存機能
+- 更新曲一覧で選択された難易度表のみを使用するように変更
+- 難易度表読み込みのパフォーマンスを改善（選択されたテーブルのみ読み込み）
+
+### Fixed
+
+## [1.1.5] - 2025-08-06
 
 ### Added
 
@@ -26,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - GitHub Actions リリースワークフローのファイルパターンマッチング問題を修正
 
-## [1.1.3] - 2025-08-06
+## [1.1.4] - 2025-08-06
 
 ### Added
 - フォルダ選択によるDBファイル自動検出機能
@@ -42,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 難易度表設定のダイアログを分けて出すように修正
 - GitHub Actions リリースワークフローのファイルパターンマッチング問題を修正 
 
-## [1.1.2] - 2025-08-06
+## [1.1.3] - 2025-08-06
 
 ### Changed
 
@@ -50,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MAX,FCの楽曲別クリア状況のホバー色が変化しない不具合を修正
 - FAILEDのホバー色が暗い問題を修正
 
-## [1.1.1] - 2025-08-05
+## [1.1.2] - 2025-08-05
 
 ### Changed
 - 楽曲別クリア状況のホバー色をクリアタイプに応じて変更するように修正
@@ -59,7 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Overjoyの★★0が★★?になる不具合を修正
 
-## [1.1.0] - 2025-08-05
+## [1.1.1] - 2025-08-05
 
 ### Added
 - GitHub Actions による自動ビルド・リリース機能

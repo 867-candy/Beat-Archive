@@ -6,7 +6,8 @@ const state = {
     scoredatalog: '',
     songdata: ''
   },
-  difficultyTables: []
+  difficultyTables: [],
+  defaultTableUrls: [] // 変更: 複数の難易度表URLを格納する配列
 };
 
 // 設定を読み込み
@@ -15,6 +16,18 @@ async function loadSettings() {
     const config = await window.api.getConfig();
     Object.assign(state.dbPaths, config.dbPaths);
     state.difficultyTables = config.difficultyTables || [];
+    
+    // 旧設定形式との互換性を保つ
+    if (config.defaultTableUrl && !config.defaultTableUrls) {
+      console.log('Using legacy defaultTableUrl:', config.defaultTableUrl);
+      state.defaultTableUrls = [config.defaultTableUrl];
+    } else {
+      console.log('Using defaultTableUrls from config:', config.defaultTableUrls);
+      state.defaultTableUrls = config.defaultTableUrls || [];
+    }
+    
+    console.log('Initial state.defaultTableUrls:', JSON.stringify(state.defaultTableUrls));
+    
     updatePathDisplays();
     updateTableList();
   } catch (error) {
@@ -83,6 +96,8 @@ async function updateDbFileStatus() {
 function updateTableList() {
   const listEl = document.getElementById('tableList');
   
+  console.log('Updating table list. Current defaultTableUrls:', state.defaultTableUrls);
+  
   if (state.difficultyTables.length === 0) {
     listEl.innerHTML = '<div class="empty-tables">難易度表が設定されていません</div>';
   } else {
@@ -94,12 +109,21 @@ function updateTableList() {
         t.name === table.name && t.url === table.url
       );
       
+      const isChecked = state.defaultTableUrls.includes(table.url);
+      console.log(`Table ${table.name}: ${table.url} - checked: ${isChecked}`);
+      
       return `
         <div class="table-item" data-original-index="${originalIndex}" data-priority="${table.priority}">
           <div class="drag-handle">☰</div>
           <div class="table-info">
             <div class="table-name">${escapeHtml(table.name)}</div>
             <div class="table-url">${escapeHtml(table.url)}</div>
+          </div>
+          <div class="table-checkbox-container">
+            <input type="checkbox" class="table-checkbox" id="checkbox-${originalIndex}" 
+                   data-table-url="${escapeHtml(table.url)}" 
+                   ${state.defaultTableUrls.includes(table.url) ? 'checked' : ''}>
+            <label for="checkbox-${originalIndex}" class="table-checkbox-label">更新曲一覧で使用</label>
           </div>
           <div class="table-actions">
             <button class="btn-delete" data-original-index="${originalIndex}">削除</button>
@@ -110,6 +134,79 @@ function updateTableList() {
     
     // ドラッグアンドドロップのイベントリスナーを追加
     addDragAndDropListeners();
+    
+    // チェックボックスのイベントリスナーを追加
+    addCheckboxListeners();
+  }
+}
+
+// チェックボックスのイベントリスナーを追加
+function addCheckboxListeners() {
+  const checkboxes = document.querySelectorAll('.table-checkbox');
+  checkboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', handleCheckboxChange);
+  });
+}
+
+// チェックボックスの変更を処理
+async function handleCheckboxChange(event) {
+  const checkbox = event.target;
+  const tableUrl = checkbox.dataset.tableUrl;
+  
+  console.log(`Checkbox changed for ${tableUrl}: ${checkbox.checked}`);
+  console.log('Before change - defaultTableUrls:', JSON.stringify(state.defaultTableUrls));
+  
+  if (checkbox.checked) {
+    // チェックされた場合、リストに追加
+    if (!state.defaultTableUrls.includes(tableUrl)) {
+      console.log(`Adding ${tableUrl} to defaultTableUrls`);
+      state.defaultTableUrls.push(tableUrl);
+    } else {
+      console.log(`${tableUrl} already exists in defaultTableUrls`);
+    }
+  } else {
+    // チェックが外された場合、リストから削除
+    const index = state.defaultTableUrls.indexOf(tableUrl);
+    if (index > -1) {
+      console.log(`Removing ${tableUrl} from defaultTableUrls at index ${index}`);
+      state.defaultTableUrls.splice(index, 1);
+    } else {
+      console.log(`${tableUrl} not found in defaultTableUrls`);
+    }
+  }
+  
+  console.log('After change - defaultTableUrls:', JSON.stringify(state.defaultTableUrls));
+  console.log('更新曲一覧で使用する難易度表:', state.defaultTableUrls);
+  
+  // 設定を即座に保存
+  try {
+    const newConfig = createConfigObject();
+    console.log('Saving config with defaultTableUrls:', newConfig.defaultTableUrls);
+    await window.api.updateConfig(newConfig);
+    
+    // 選択された難易度表の名前を取得
+    const selectedTable = state.difficultyTables.find(table => table.url === tableUrl);
+    const tableName = selectedTable ? selectedTable.name : 'Unknown';
+    
+    if (checkbox.checked) {
+      showTableStatus(`「${tableName}」を更新曲一覧で使用するように設定しました`, 'success');
+    } else {
+      showTableStatus(`「${tableName}」を更新曲一覧で使用しないように設定しました`, 'success');
+    }
+  } catch (error) {
+    showTableStatus('設定の保存に失敗しました: ' + error.message, 'error');
+    // エラーの場合はチェックボックスの状態を元に戻す
+    checkbox.checked = !checkbox.checked;
+    if (checkbox.checked) {
+      if (!state.defaultTableUrls.includes(tableUrl)) {
+        state.defaultTableUrls.push(tableUrl);
+      }
+    } else {
+      const index = state.defaultTableUrls.indexOf(tableUrl);
+      if (index > -1) {
+        state.defaultTableUrls.splice(index, 1);
+      }
+    }
   }
 }
 
@@ -118,6 +215,16 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// 設定オブジェクトを作成
+function createConfigObject() {
+  console.log('Creating config object with state.defaultTableUrls:', JSON.stringify(state.defaultTableUrls));
+  return {
+    dbPaths: state.dbPaths,
+    difficultyTables: state.difficultyTables,
+    defaultTableUrls: state.defaultTableUrls
+  };
 }
 
 // 難易度表を追加
@@ -193,10 +300,7 @@ async function addTable() {
   
   // 設定を自動保存
   try {
-    const newConfig = {
-      dbPaths: state.dbPaths,
-      difficultyTables: state.difficultyTables
-    };
+    const newConfig = createConfigObject();
     await window.api.updateConfig(newConfig);
     showTableStatus(`難易度表「${name}」を追加し、設定を保存しました`, 'success');
   } catch (error) {
@@ -377,10 +481,7 @@ async function updatePriorityFromOrder() {
   
   // 設定を自動保存
   try {
-    const newConfig = {
-      dbPaths: state.dbPaths,
-      difficultyTables: state.difficultyTables
-    };
+    const newConfig = createConfigObject();
     await window.api.updateConfig(newConfig);
     showTableStatus('優先順位を更新しました', 'success');
   } catch (error) {
@@ -561,10 +662,7 @@ async function removeTable(originalIndex) {
     
     // 設定を自動保存
     try {
-      const newConfig = {
-        dbPaths: state.dbPaths,
-        difficultyTables: state.difficultyTables
-      };
+      const newConfig = createConfigObject();
       await window.api.updateConfig(newConfig);
       showTableStatus(`難易度表「${tableToRemove.name}」を削除し、設定を保存しました`, 'success');
     } catch (error) {
@@ -635,10 +733,7 @@ function setupEventListeners() {
   // 設定保存ボタン
   document.getElementById('saveConfig').addEventListener('click', async () => {
     try {
-      const newConfig = {
-        dbPaths: state.dbPaths,
-        difficultyTables: state.difficultyTables
-      };
+      const newConfig = createConfigObject();
       await window.api.updateConfig(newConfig);
       showStatus('設定を保存しました', 'success');
     } catch (error) {

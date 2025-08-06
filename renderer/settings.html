@@ -328,6 +328,45 @@
     .btn-add:hover {
       background: #218838;
     }
+    .default-table-setting {
+      background-color: #e8f5e8;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #c3e6cb;
+      margin-bottom: 20px;
+    }
+    .default-table-setting h4 {
+      margin: 0 0 15px 0;
+      color: #155724;
+      font-size: 1.1em;
+    }
+    .table-checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+    .table-checkbox {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      cursor: pointer;
+    }
+    .table-checkbox-label {
+      font-size: 0.85em;
+      color: #28a745;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .default-table-select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      font-size: 0.9em;
+      background: white;
+      cursor: pointer;
+    }
     .empty-tables {
       text-align: center;
       padding: 20px;
@@ -398,6 +437,14 @@
     <div class="setting-group">
       <h3>📊 難易度表設定</h3>
       <p>使用する難易度表を設定してください。ドラッグアンドドロップで優先順位を変更できます。上にあるものほど優先されます。</p>
+      
+      <div class="default-table-setting">
+        <h4>🎯 更新曲一覧で使用する難易度表</h4>
+        <div class="file-info">
+          <small>各難易度表の右側にあるチェックボックスをONにすると、その難易度表が更新曲一覧のレベル表示に使用されます。<br>
+          複数の難易度表を選択できます。優先順位は表の並び順で決まります（上にあるものほど優先されます）。</small>
+        </div>
+      </div>
       
       <div class="table-list" id="tableList">
         <div class="empty-tables">難易度表が設定されていません</div>

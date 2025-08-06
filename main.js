@@ -485,6 +485,226 @@ async function loadDifficultyTables(config) {
   return tables;
 }
 
+// 更新曲一覧で使用する難易度表のみを取得
+async function loadSelectedDifficultyTables(config) {
+  console.log('loadSelectedDifficultyTables called with config:', !!config);
+  
+  // 旧設定形式との互換性を保つ
+  const selectedUrls = config.defaultTableUrls || (config.defaultTableUrl ? [config.defaultTableUrl] : []);
+  
+  console.log('Selected table URLs for update list:', selectedUrls);
+  
+  if (!selectedUrls || selectedUrls.length === 0) {
+    console.log('No difficulty tables selected for update list, returning empty array');
+    return [];
+  }
+  
+  // 選択されたテーブルの設定のみを取得
+  const selectedTableConfigs = (config.difficultyTables || []).filter(tableConfig => 
+    selectedUrls.includes(tableConfig.url)
+  );
+  
+  console.log('Selected table configs:', selectedTableConfigs.map(t => ({name: t.name, url: t.url})));
+  
+  if (selectedTableConfigs.length === 0) {
+    console.log('No matching table configurations found for selected URLs');
+    return [];
+  }
+  
+  // キャッシュの確認
+  const now = Date.now();
+  let useCache = false;
+  
+  if (difficultyTablesCache && (now - difficultyTablesLastUpdated) < CACHE_DURATION) {
+    // キャッシュが有効な場合、選択されたテーブルのみを抽出
+    const cachedSelectedTables = difficultyTablesCache.filter(table => 
+      selectedUrls.includes(table.url)
+    );
+    
+    // 必要なテーブルがすべてキャッシュに存在するかチェック
+    const allSelectedInCache = selectedTableConfigs.every(config => 
+      cachedSelectedTables.some(cached => cached.url === config.url)
+    );
+    
+    if (allSelectedInCache) {
+      console.log(`Using cached data for ${cachedSelectedTables.length} selected tables`);
+      return cachedSelectedTables.sort((a, b) => a.priority - b.priority);
+    }
+  }
+  
+  console.log(`Loading ${selectedTableConfigs.length} selected difficulty tables...`);
+  const tables = [];
+  
+  for (const tableConfig of selectedTableConfigs) {
+    try {
+      console.log(`Loading selected table: ${tableConfig.name} from ${tableConfig.url}`);
+      
+      let headerUrl = tableConfig.url;
+      let header;
+      
+      // URLが直接JSONファイルを指しているかチェック
+      if (tableConfig.url.endsWith('.json')) {
+        console.log('Direct JSON URL detected');
+        headerUrl = tableConfig.url;
+        header = await fetchJson(headerUrl);
+      } else if (tableConfig.url.endsWith('/')) {
+        // ディレクトリURLの場合、header.jsonを自動補完
+        console.log('Directory URL detected, trying header.json');
+        headerUrl = tableConfig.url + 'header.json';
+        
+        try {
+          header = await fetchJson(headerUrl);
+          console.log('Header loaded successfully from auto-completed URL');
+        } catch (autoError) {
+          console.log(`Auto-completion failed: ${autoError.message}, falling back to HTML parsing`);
+          // HTMLページの場合の処理にフォールバック
+          const html = await fetchHtml(tableConfig.url);
+          headerUrl = extractJsonUrlFromHtml(html, tableConfig.url);
+          console.log(`Extracted JSON URL from HTML: ${headerUrl}`);
+          
+          // ヘッダー情報を取得（複数パターンを試行）
+          const headerPatterns = [
+            headerUrl,
+            constructJsonUrl('header.json', tableConfig.url),
+            constructJsonUrl('table.json', tableConfig.url),
+            constructJsonUrl('index.json', tableConfig.url),
+            constructJsonUrl('data/header.json', tableConfig.url),
+            constructJsonUrl('json/header.json', tableConfig.url)
+          ];
+          
+          for (const headerPattern of headerPatterns) {
+            try {
+              console.log(`Trying header pattern: ${headerPattern}`);
+              header = await fetchJson(headerPattern);
+              console.log(`Header loaded successfully from: ${headerPattern}`);
+              break;
+            } catch (headerError) {
+              console.log(`Failed to load header from ${headerPattern}: ${headerError.message}`);
+              continue;
+            }
+          }
+          
+          if (!header) {
+            throw new Error(`Failed to load header for ${tableConfig.name} from any pattern`);
+          }
+        }
+      } else {
+        // HTMLページの場合、metaタグからJSONのURLを抽出
+        const html = await fetchHtml(tableConfig.url);
+        headerUrl = extractJsonUrlFromHtml(html, tableConfig.url);
+        console.log(`Extracted JSON URL from HTML: ${headerUrl}`);
+        
+        // ヘッダー情報を取得（複数パターンを試行）
+        const headerPatterns = [
+          headerUrl,
+          constructJsonUrl('header.json', tableConfig.url),
+          constructJsonUrl('table.json', tableConfig.url),
+          constructJsonUrl('index.json', tableConfig.url),
+          constructJsonUrl('data/header.json', tableConfig.url),
+          constructJsonUrl('json/header.json', tableConfig.url)
+        ];
+        
+        for (const headerPattern of headerPatterns) {
+          try {
+            console.log(`Trying header pattern: ${headerPattern}`);
+            header = await fetchJson(headerPattern);
+            console.log(`Header loaded successfully from: ${headerPattern}`);
+            break;
+          } catch (headerError) {
+            console.log(`Failed to load header from ${headerPattern}: ${headerError.message}`);
+            continue;
+          }
+        }
+        
+        if (!header) {
+          throw new Error(`Failed to load header for ${tableConfig.name} from any pattern`);
+        }
+      }
+      console.log(`Header loaded successfully. Name: ${header.name}, Symbol: ${header.symbol}, Data URL: ${header.data_url}`);
+      
+      // データ部を取得
+      const dataUrl = header.data_url;
+      console.log(`Fetching data from: ${dataUrl}`);
+      
+      // data_urlが相対パスの場合、ベースURLと結合
+      let fullDataUrl = dataUrl;
+      if (!dataUrl.startsWith('http://') && !dataUrl.startsWith('https://')) {
+        try {
+          const base = new URL(headerUrl);
+          fullDataUrl = new URL(dataUrl, base.origin + base.pathname.replace(/\/[^\/]*$/, '/')).toString();
+          console.log(`Converted relative data URL to: ${fullDataUrl}`);
+        } catch (error) {
+          console.log(`Data URL conversion failed: ${error.message}`);
+          // フォールバック：単純な文字列結合
+          const baseDir = headerUrl.replace(/\/[^\/]*$/, '/');
+          fullDataUrl = baseDir + dataUrl.replace('./', '');
+          console.log(`Fallback data URL: ${fullDataUrl}`);
+        }
+      }
+      
+      // データを取得（Google Scriptsの場合は複数パターンを試行）
+      let data;
+      if (fullDataUrl.includes('script.google') || fullDataUrl.includes('script.googleusercontent.com')) {
+        console.log('Google Scripts URL detected, trying multiple patterns...');
+        
+        // Google ScriptsのURLパターンを複数試行
+        const scriptId = extractScriptId(fullDataUrl);
+        const googlePatternsToTry = [
+          fullDataUrl, // 元のURL
+          fullDataUrl.replace('script.googleusercontent.com', 'script.google.com'), // スクリプトURLに変更
+          fullDataUrl.replace('script.google.com', 'script.googleusercontent.com'), // ユーザーコンテンツURLに変更
+          // exec形式への変換を試行
+          fullDataUrl.replace(/macros\/echo\?.*/, 'macros/s/' + scriptId + '/exec'),
+          // Web app形式への変換を試行
+          `https://script.google.com/macros/s/${scriptId}/exec`,
+          `https://script.googleusercontent.com/macros/s/${scriptId}/exec`,
+          // Dev形式も試行
+          `https://script.google.com/macros/s/${scriptId}/dev`
+        ];
+        
+        // 重複を除去
+        const uniquePatterns = [...new Set(googlePatternsToTry)];
+        
+        for (const googleUrl of uniquePatterns) {
+          try {
+            console.log(`Trying Google Scripts URL: ${googleUrl}`);
+            data = await fetchJson(googleUrl);
+            console.log(`Successfully fetched data from: ${googleUrl}`);
+            break;
+          } catch (googleError) {
+            console.log(`Failed to fetch from ${googleUrl}: ${googleError.message}`);
+            if (googleUrl === uniquePatterns[uniquePatterns.length - 1]) {
+              throw new Error(`Failed to fetch Google Scripts data from all patterns: ${uniquePatterns.join(', ')}`);
+            }
+            continue;
+          }
+        }
+      } else {
+        // 通常のURL
+        data = await fetchJson(fullDataUrl);
+      }
+      
+      tables.push({
+        ...tableConfig,
+        header,
+        data,
+        symbol: header.symbol || '',
+        levelOrder: header.level_order || []
+      });
+      
+    } catch (error) {
+      console.warn(`Failed to load selected difficulty table ${tableConfig.name}:`, error.message);
+    }
+  }
+  
+  // 優先順位でソート
+  tables.sort((a, b) => a.priority - b.priority);
+  
+  console.log(`Selected difficulty tables loaded: ${tables.length} out of ${selectedTableConfigs.length} requested`);
+  
+  return tables;
+}
+
 // 譜面のmd5/sha256から難易度表情報を検索（最高優先度のみ）
 function findChartInTables(tables, md5, sha256) {
   for (const table of tables) {
@@ -1128,6 +1348,7 @@ function createWindow() {
 
 // 更新された楽曲を検出（scorelog.db ベース + 難易度表対応）
 ipcMain.handle('get-updated-songs', async (_, dateString) => {
+  console.log('get-updated-songs called with dateString:', dateString);
   const { score, scorelog, songdata, scoredatalog } = config.dbPaths;
   console.log('使用するDBパス:', {
     score: score,
@@ -1143,8 +1364,8 @@ ipcMain.handle('get-updated-songs', async (_, dateString) => {
   let scorelogDB, scoreDB, songdataDB, scoredatalogDB, localDB;
 
   try {
-    // 難易度表データを読み込み
-    const difficultyTables = await loadDifficultyTables(config);
+    // 更新曲一覧で使用する選択された難易度表のみを読み込み
+    const difficultyTables = await loadSelectedDifficultyTables(config);
     
     // 読み取り専用でDBを開く
     scorelogDB = new sqlite3.Database(scorelog, sqlite3.OPEN_READONLY);
