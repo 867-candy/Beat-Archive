@@ -4,6 +4,11 @@ on:
   push:
     tags: [ 'v*' ]
 
+# GitHub Actionsの権限設定
+permissions:
+  contents: write
+  releases: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -56,11 +61,14 @@ jobs:
     - name: Build portable version
       run: npm run package
       
+    - name: List portable build results
+      run: dir dist
+      
     - name: Upload portable artifacts
       uses: actions/upload-artifact@v4
       with:
         name: windows-portable
-        path: dist/
+        path: dist/beat-archive-win32-x64/
         retention-days: 30
 
   # タグがpushされた時のリリース作成
@@ -76,14 +84,32 @@ jobs:
     - name: List artifacts (debug)
       run: find . -type f -name "*" | head -20
       
+    - name: Prepare release files
+      run: |
+        mkdir -p release-files
+        # .exeファイルをコピー
+        if [ -d "windows-build" ]; then
+          find windows-build -name "*.exe" -exec cp {} release-files/ \;
+          echo "Copied .exe files from windows-build"
+        fi
+        # ポータブル版全体をZIPにパッケージ
+        if [ -d "windows-portable" ]; then
+          cd windows-portable
+          zip -r ../release-files/Beat-Archive-Portable.zip ./*
+          cd ..
+          echo "Created portable ZIP package"
+        fi
+        # 結果を表示
+        echo "Release files:"
+        ls -la release-files/
+      
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          windows-build/*
-          windows-portable/*
+        files: release-files/*
         draft: false
         prerelease: false
         generate_release_notes: true
+        fail_on_unmatched_files: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
