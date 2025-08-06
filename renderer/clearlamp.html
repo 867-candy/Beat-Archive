@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>クリアランプ - Beat Archive</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: none;
+      width: auto;
+      margin: 0px;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .nav {
+      background: #2c3e50;
+      padding: 15px;
+      margin: -20px -20px 20px -20px;
+      border-radius: 8px 8px 0 0;
+    }
+    .nav a {
+      color: white;
+      text-decoration: none;
+      margin-right: 20px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+    .nav a:hover {
+      background-color: rgba(255,255,255,0.1);
+    }
+    .nav a.active {
+      background-color: #3498db;
+    }
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 30px;
+    }
+    .controls {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #3498db;
+    }
+    .table-selector {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    .table-selector label {
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .table-selector select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      font-size: 14px;
+      min-width: 300px;
+    }
+    .level-filter {
+      margin-top: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .level-filter label {
+      font-weight: bold;
+      color: #2c3e50;
+      white-space: nowrap;
+    }
+    .level-filter select {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      font-size: 14px;
+      min-width: 200px;
+    }
+    .level-filter input[type="text"] {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      font-size: 14px;
+      min-width: 250px;
+      margin-left: 15px;
+    }
+    .level-filter input[type="text"]:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+    .stat-card {
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+      text-align: center;
+    }
+    .stat-number {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #7f8c8d;
+      margin-top: 5px;
+    }
+    .chart-container {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+      overflow: hidden; /* スクロールを無効にしてグラフを固定表示 */
+      height: auto; /* 高さを自動調整 */
+    }
+    
+    .chart-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 15px;
+    }
+    .chart-placeholder {
+      width: 100%;
+      height: 100%; /* 横向きグラフに合わせて高さを調整 */
+      background: #f8f9fa;
+      border: 2px dashed #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      font-style: italic;
+      border-radius: 4px;
+    }
+    
+    .chart-svg {
+      background: #fafafa;
+      border-radius: 4px;
+      /* min-height: 400px; 削除 - 動的高さに対応 */
+    }
+    
+    .chart-svg rect[data-level] {
+      transition: opacity 0.2s ease;
+    }
+    
+    .chart-svg rect[data-level]:hover {
+      stroke: #333;
+      stroke-width: 1;
+    }
+    .table-container {
+      margin-bottom: 30px;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+      overflow: hidden;
+    }
+    .table-header {
+      background: #f8f9fa;
+      padding: 15px 20px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .table-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #2c3e50;
+      margin: 0;
+    }
+    .song-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .song-table th {
+      background: #f8f9fa;
+      padding: 12px 16px 12px 32px; /* 右側に三角形用のスペースを追加 */
+      font-weight: bold;
+      color: #2c3e50;
+      border-bottom: 2px solid #e0e0e0;
+      font-size: 14px;
+    }
+    .song-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 14px;
+    }
+    .song-table tr {
+      transition: background-color 0.2s;
+      border-left: 4px solid transparent;
+    }
+    .level-cell {
+      text-align: center;
+      font-weight: bold;
+      width: 100px;
+    }
+    .song-title {
+      max-width: 350px;
+      word-wrap: break-word;
+      white-space: normal;
+    }
+    .song-title a {
+      color: #2c3e50;
+      text-decoration: none;
+    }
+    .song-title a:hover {
+      text-decoration: underline;
+    }
+    .clear-cell {
+      text-align: center;
+      font-weight: bold;
+      width: 120px;
+    }
+    .misscount-cell {
+      text-align: center;
+      width: 100px;
+      font-family: monospace;
+    }
+    .score-cell {
+      text-align: center;
+      width: 70px;
+      font-family: monospace;
+    }
+    .djlevel-cell {
+      text-align: center;
+      width: 80px;
+      font-family: monospace;
+      font-weight: bold;
+    }
+    .scorerate-cell {
+      text-align: center;
+      width: 90px;
+      font-family: monospace;
+    }
+    .lastplayed-cell {
+      text-align: center;
+      width: 100px;
+      font-size: 0.9em;
+    }
+    .rank-cell {
+      text-align: center;
+      font-weight: bold;
+      width: 60px;
+    }
+    .percentage-cell {
+      text-align: right;
+      font-family: monospace;
+      width: 80px;
+    }
+    
+    /* クリアタイプ別カラー */
+    .clear-noplay { border-left-color: #f3f4f6; background-color: #f9fafb; }
+    .clear-failed { border-left-color: #99a1af; background-color: #d0d0d0; }
+    .clear-assist { border-left-color: #ff94db; background-color: #ff94db; }
+    .clear-easy { border-left-color: #beffbe; background-color: #beffbe;  }
+    .clear-normal { border-left-color: #bedeff; background-color: #bedeff; }
+    .clear-hard { border-left-color: #ffa2a2; background-color: #ffa2a2; }
+    .clear-exhard { border-left-color: #fefeb3; background-color: #fefeb3; }
+    .clear-fullcombo { border-left-color: #66E7F8; background-color: #66E7F8; }
+    .clear-perfect { border-left-color: #85FAC0; background-color: #85FAC0; }
+    .clear-max { border-left-color: #F3E8FF; background-color: #F3E8FF; }
+    
+    .clear-noplay:hover { background-color: #999999; }
+    .clear-failed:hover { background-color: #555555; }
+    .clear-assist:hover { background-color: #ad46ff; }
+    .clear-easy:hover { background-color: #7bf1a8; }
+    .clear-normal:hover { background-color: #51a2ff; }
+    .clear-hard:hover { background-color: #ff7d7d; }
+    .clear-exhard:hover { background-color: #ffd230; }
+    .clear-fullcombo:hover { background-color: #53eafd; }
+    .clear-perfect:hover { background-color: #85FAC0; }
+    .clear-max:hover { background-color: #F3E8FF; }
+    
+    /* ソート機能関連 */
+    .sortable {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      transition: background-color 0.2s ease;
+    }
+    .sortable:hover {
+      background-color: #888888;
+    }
+    .sorted-asc {
+      background-color: #e3f2fd;
+    }
+    .sorted-desc {
+      background-color: #e8f5e8;
+    }
+    
+    /* ソートインジケーター（三角形） */
+    .sortable::after {
+      content: '';
+      position: absolute;
+      right: 10px; /* 右端から少し離す */
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+    }
+    
+    /* デフォルト状態（上向きの三角形のみ） */
+    .sortable:not(.sorted-asc):not(.sorted-desc)::after {
+      border-bottom: 6px solid #ccc;
+    }
+    
+    /* 昇順ソート時の上向き三角形を青に */
+    .sorted-asc::after {
+      border-bottom: 6px solid #2196f3;
+    }
+    
+    /* 降順ソート時の下向き三角形を緑に */
+    .sorted-desc::after {
+      border-top: 6px solid #4caf50;
+    }
+    
+    /* ホバー時のハイライト */
+    .sortable:hover::after {
+      opacity: 0.8;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    
+    .no-data {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+      font-style: italic;
+    }
+    
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 15px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 4px;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 2px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <a href="index.html">📄 更新曲一覧</a>
+      <a href="clearlamp.html" class="active">💡 クリアランプ</a>
+      <a href="settings.html">⚙️ 設定</a>
+    </nav>
+
+    <h1>💡 クリアランプ</h1>
+
+    <div class="controls">
+      <div class="table-selector">
+        <label>難易度表:</label>
+        <select id="tableSelect">
+          <option value="">読み込み中...</option>
+        </select>
+      </div>
+      
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-number" id="totalSongs">-</div>
+          <div class="stat-label">総楽曲数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="playedSongs">-</div>
+          <div class="stat-label">プレイ済み</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="clearRate">-</div>
+          <div class="stat-label">クリア率</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="hardClearRate">-</div>
+          <div class="stat-label">HARD以上</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <div class="chart-title">レベル別クリア状況</div>
+      <div class="chart-placeholder" id="chartContainer">
+        難易度表を選択してください
+      </div>
+      
+      
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-color" style="background: #F3E8FF;"></div>
+          <span>MAX</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #85FAC0;"></div>
+          <span>PERFECT</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #53eafd;"></div>
+          <span>FULL COMBO</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ffd230;"></div>
+          <span>EX HARD CLEAR</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ffa2a2;"></div>
+          <span>HARD CLEAR</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #51a2ff;"></div>
+          <span>CLEAR</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #7bf1a8;"></div>
+          <span>EASY CLEAR</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ad46ff;"></div>
+          <span>ASSIST EASY CLEAR</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #99a1af;"></div>
+          <span>FAILED</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #f3f4f6;"></div>
+          <span>NO PLAY</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <div class="table-header">
+        <h3 class="table-title">楽曲別クリア状況</h3>
+        <div class="level-filter">
+          <label for="levelSelect">レベルフィルタ:</label>
+          <select id="levelSelect">
+            <option value="">読み込み中...</option>
+          </select>
+          <label for="songSearch">楽曲名検索:</label>
+          <input type="text" id="songSearch" placeholder="楽曲名を入力（部分一致）">
+        </div>
+      </div>
+      <div id="tableContainer">
+        <div class="loading">難易度表を選択してください</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="clearlamp.js"></script>
+</body>
+</html>

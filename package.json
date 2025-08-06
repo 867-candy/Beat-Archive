@@ -1,0 +1,63 @@
+{
+  "name": "beat-archive",
+  "version": "1.1.0",
+  "description": "beatorajaスコア分析ツール",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env NODE_ENV=development electron .",
+    "debug": "cross-env NODE_ENV=development electron . --inspect=5858",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "dist": "npm run build",
+    "package": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"sample-db|config.json|local-data.db|debug|test|testdata\" --executable-name=\"Beat-Archive-Portable\""
+  },
+  "keywords": [
+    "beatoraja",
+    "score",
+    "analysis"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "dayjs": "^1.11.13",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.4.0",
+    "cross-env": "^10.0.0",
+    "electron": "^37.2.5",
+    "electron-builder": "^26.0.12",
+    "electron-builder-squirrel-windows": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.beat-archive.app",
+    "productName": "Beat Archive",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "config-build.json",
+      "node_modules/**/*",
+      "!debug",
+      "!test",
+      "!testdata"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "forceCodeSigning": false
+    }
+  }
+}

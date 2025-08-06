@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>設定 - Beat Archive</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: none;
+      width: auto;
+      margin: 0 20px;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .nav {
+      background: #2c3e50;
+      padding: 15px;
+      margin: -20px -20px 20px -20px;
+      border-radius: 8px 8px 0 0;
+    }
+    .nav a {
+      color: white;
+      text-decoration: none;
+      margin-right: 20px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+    .nav a:hover {
+      background-color: rgba(255,255,255,0.1);
+    }
+    .nav a.active {
+      background-color: #3498db;
+    }
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 30px;
+    }
+    .setting-group {
+      margin-bottom: 25px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #3498db;
+    }
+    .setting-group h3 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+    .file-setting {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .file-setting label {
+      width: 120px;
+      padding-right: 30px;
+      font-weight: bold;
+      color: #34495e;
+    }
+    .file-setting button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .file-setting button:hover {
+      background: #2980b9;
+    }
+    .file-path {
+      font-size: 0.9em;
+      color: #7f8c8d;
+      font-style: italic;
+    }
+    .save-btn {
+      background: #27ae60;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .save-btn:hover {
+      background: #229954;
+    }
+    .status {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 4px;
+      display: none;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .table-list {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 15px;
+    }
+    .table-item {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: move;
+      transition: background-color 0.2s, box-shadow 0.2s;
+    }
+    .table-item:last-child {
+      border-bottom: none;
+    }
+    .table-item.dragging {
+      opacity: 0.5;
+      transform: rotate(5deg);
+    }
+    .table-item.drag-over {
+      background-color: #e3f2fd;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .table-item.onGrab {
+      opacity: 0.8;
+      background: #f8f9fa;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border: 2px solid #3498db;
+      border-radius: 6px;
+      transform: scale(1.02);
+    }
+    .table-item.hidden {
+      display: none;
+    }
+    .drag-handle {
+      color: #666;
+      font-size: 16px;
+      margin-right: 10px;
+      cursor: grab;
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+    .table-info {
+      flex: 1;
+    }
+    .table-name {
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 4px;
+    }
+    .table-url {
+      font-size: 0.85em;
+      color: #666;
+      font-family: monospace;
+      word-break: break-all;
+    }
+    .table-priority {
+      display: flex;
+      align-items: center;
+      margin-left: 10px;
+      min-width: 120px;
+    }
+    .priority-display {
+      font-size: 0.9em;
+      color: #666;
+      font-weight: bold;
+    }
+    .table-actions {
+      display: flex;
+      gap: 5px;
+      margin-left: 10px;
+    }
+    .table-actions button {
+      padding: 4px 8px;
+      font-size: 0.8em;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .btn-delete {
+      background: #e74c3c;
+      color: white;
+    }
+    .btn-delete:hover {
+      background: #c0392b;
+    }
+    .btn-move-up, .btn-move-down {
+      background: #3498db;
+      color: white;
+      font-weight: bold;
+      min-width: 25px;
+    }
+    .btn-move-up:hover, .btn-move-down:hover {
+      background: #2980b9;
+    }
+    .btn-move-up:disabled, .btn-move-down:disabled {
+      background: #bdc3c7;
+      cursor: not-allowed;
+    }
+    .btn-save-priority {
+      background: #27ae60;
+      color: white;
+      font-size: 0.7em;
+    }
+    .btn-save-priority:hover {
+      background: #229954;
+    }
+    .add-table-form {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+    }
+    .form-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: flex-end;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .form-group label {
+      font-size: 0.9em;
+      color: #495057;
+      margin-bottom: 3px;
+    }
+    .form-group input {
+      padding: 6px 8px;
+      border: 1px solid #ced4da;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+    .form-group.name {
+      flex: 2;
+    }
+    .form-group.url {
+      flex: 3;
+    }
+    .btn-add {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      height: fit-content;
+    }
+    .btn-add:hover {
+      background: #218838;
+    }
+    .empty-tables {
+      text-align: center;
+      padding: 20px;
+      color: #6c757d;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <a href="index.html">📄 更新曲一覧</a>
+      <a href="clearlamp.html">💡 クリアランプ</a>
+      <a href="settings.html" class="active">⚙️ 設定</a>
+    </nav>
+
+    <h1>⚙️ 設定</h1>
+
+    <div class="setting-group">
+      <h3>📁 DBファイル設定</h3>
+      <p>beatorajaのデータベースファイルを指定してください。</p>
+      
+      <div class="file-setting">
+        <label>score.db:</label>
+        <button id="selectScore">ファイルを選択</button>
+        <span class="file-path" id="scorePath">未設定</span>
+      </div>
+      
+      <div class="file-setting">
+        <label>scorelog.db:</label>
+        <button id="selectScorelog">ファイルを選択</button>
+        <span class="file-path" id="scorelogPath">未設定</span>
+      </div>
+      
+      <div class="file-setting">
+        <label>scoredatalog.db:</label>
+        <button id="selectScoredatalog">ファイルを選択</button>
+        <span class="file-path" id="scoredatalogPath">未設定</span>
+      </div>
+      
+      <div class="file-setting">
+        <label>songdata.db:</label>
+        <button id="selectSongdata">ファイルを選択</button>
+        <span class="file-path" id="songdataPath">未設定</span>
+      </div>
+      
+      <button class="save-btn" id="saveConfig">設定を保存</button>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="setting-group">
+      <h3>📊 難易度表設定</h3>
+      <p>使用する難易度表を設定してください。ドラッグアンドドロップで優先順位を変更できます。上にあるものほど優先されます。</p>
+      
+      <div class="table-list" id="tableList">
+        <div class="empty-tables">難易度表が設定されていません</div>
+      </div>
+
+      <div class="add-table-form">
+        <h4>新しい難易度表を追加</h4>
+        <div class="form-row">
+          <div class="form-group name">
+            <label>表名</label>
+            <input type="text" id="tableName" placeholder="例: Satelite（空の場合、表から自動取得）">
+          </div>
+          <div class="form-group url">
+            <label>表のURL</label>
+            <input type="text" id="tableUrl" placeholder="例: https://stellabms.xyz/sl/table.html">
+          </div>
+          <button class="btn-add" id="addTableBtn">追加</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+
+      <h3>ℹ️ 設定ガイド</h3>
+      <p>beatorajaのデータベースファイルは通常、以下の場所にあります：</p>
+      <ul>
+        <li><code>beatoraja/player/player*/score.db</code> - スコアデータ</li>
+        <li><code>beatoraja/player/player*/scorelog.db</code> - プレイログ</li>
+        <li><code>beatoraja/player/player*/scoredatalog.db</code> - プレイログ</li>
+        <li><code>beatoraja/songdata.db</code> - 楽曲情報</li>
+      </ul>
+      
+      <h4>📊 難易度表について</h4>
+      <p>難易度表は以下の形式で指定してください：</p>
+      <ul>
+        <li><strong>HTMLページ</strong> - bmstableメタタグからJSONのURLを自動抽出</li>
+      </ul>
+      <p>HTMLページの例: <code>https://stellabms.xyz/sl/table.html</code></p>
+    </div>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

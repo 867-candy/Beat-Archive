@@ -1,0 +1,25 @@
+{
+  "dbPaths": {
+    "score": "",
+    "scorelog": "",
+    "scoredatalog": "",
+    "songdata": ""
+  },
+  "difficultyTables": [
+    {
+      "name": "GENOCIDE 発狂難易度表",
+      "url": "https://miraiscarlet.github.io/bms/table/genocide_insane/insane_bms.html",
+      "priority": 1
+    },
+    {
+      "name": "Satelite",
+      "url": "https://stellabms.xyz/sl/table.html",
+      "priority": 2
+    },
+    {
+      "name": "Stella",
+      "url": "https://stellabms.xyz/st/table.html",
+      "priority": 3
+    }
+  ]
+}
