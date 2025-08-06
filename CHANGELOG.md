@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.1.4] - 2025-08-06
+
+### Added
+
+
+### Changed
+
+- GitHub Actions ワークフローの権限設定を修正
+
+### Fixed
+
+- GitHub Actions リリースワークフローのファイルパターンマッチング問題を修正
+
 ## [1.1.3] - 2025-08-06
 
 ### Added
