@@ -1676,6 +1676,24 @@ ipcMain.handle('select-db-path', async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
+// フォルダ選択
+ipcMain.handle('select-folder-path', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+
+// パス結合
+ipcMain.handle('join-path', (_, ...paths) => {
+  return path.join(...paths);
+});
+
+// ファイル存在確認
+ipcMain.handle('file-exists', (_, filePath) => {
+  return fs.existsSync(filePath);
+});
+
 // 確認ダイアログ（Electronの既知の不具合回避のため）
 ipcMain.handle('show-confirm-dialog', async (_, message, title = '確認') => {
   const result = await dialog.showMessageBox({

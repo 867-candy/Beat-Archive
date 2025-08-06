@@ -56,11 +56,19 @@
     }
     .file-setting {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       margin-bottom: 15px;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .file-setting > div:first-child {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
     }
     .file-setting label {
-      width: 120px;
+      width: 130px;
       padding-right: 30px;
       font-weight: bold;
       color: #34495e;
@@ -81,6 +89,57 @@
       font-size: 0.9em;
       color: #7f8c8d;
       font-style: italic;
+      flex: 1;
+    }
+    .file-info {
+      margin-left: 20px;
+    }
+    .file-info small {
+      color: #6c757d;
+      font-style: italic;
+    }
+    .db-status {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #17a2b8;
+    }
+    .db-status h4 {
+      margin: 0 0 10px 0;
+      color: #495057;
+      font-size: 1em;
+    }
+    .detected-files {
+      display: grid;
+      gap: 8px;
+    }
+    .db-file {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: white;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+    }
+    .file-label {
+      font-family: monospace;
+      font-weight: bold;
+      color: #495057;
+    }
+    .file-status {
+      font-size: 0.9em;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    .file-status.found {
+      background: #d4edda;
+      color: #155724;
+    }
+    .file-status.missing {
+      background: #f8d7da;
+      color: #721c24;
     }
     .save-btn {
       background: #27ae60;
@@ -100,6 +159,7 @@
       padding: 10px;
       border-radius: 4px;
       display: none;
+      min-height: 20px; /* ステータス表示の最小高さを確保 */
     }
     .status.success {
       background: #d4edda;
@@ -253,11 +313,8 @@
       border-radius: 3px;
       font-size: 0.9em;
     }
-    .form-group.name {
-      flex: 2;
-    }
     .form-group.url {
-      flex: 3;
+      flex: 1;
     }
     .btn-add {
       background: #28a745;
@@ -294,27 +351,44 @@
       <p>beatorajaのデータベースファイルを指定してください。</p>
       
       <div class="file-setting">
-        <label>score.db:</label>
-        <button id="selectScore">ファイルを選択</button>
-        <span class="file-path" id="scorePath">未設定</span>
+        <div>
+          <label>Player* フォルダ:</label>
+          <button id="selectPlayerDbFolder">フォルダを選択</button>
+          <span class="file-path" id="playerDbFolderPath">未設定</span>
+        </div>
+        <div class="file-info">
+          <small>beatoraja/player/player* を選択してください。</small> <br>
+          <small>score.db, scorelog.db, scoredatalog.db を自動で読み込みます。</small>
+        </div>
       </div>
       
       <div class="file-setting">
-        <label>scorelog.db:</label>
-        <button id="selectScorelog">ファイルを選択</button>
-        <span class="file-path" id="scorelogPath">未設定</span>
+        <div>
+          <label>songdata.db:</label>
+          <button id="selectSongdata">ファイルを選択</button>
+          <span class="file-path" id="songdataPath">未設定</span>
+        </div>
+        <div class="file-info">
+          <small>通常は beatoraja/songdata.db にあります</small>
+        </div>
       </div>
       
-      <div class="file-setting">
-        <label>scoredatalog.db:</label>
-        <button id="selectScoredatalog">ファイルを選択</button>
-        <span class="file-path" id="scoredatalogPath">未設定</span>
-      </div>
-      
-      <div class="file-setting">
-        <label>songdata.db:</label>
-        <button id="selectSongdata">ファイルを選択</button>
-        <span class="file-path" id="songdataPath">未設定</span>
+      <div class="db-status">
+        <h4>検出されたDBファイル:</h4>
+        <div class="detected-files">
+          <div class="db-file">
+            <span class="file-label">score.db:</span>
+            <span class="file-status" id="scoreStatus">未検出</span>
+          </div>
+          <div class="db-file">
+            <span class="file-label">scorelog.db:</span>
+            <span class="file-status" id="scorelogStatus">未検出</span>
+          </div>
+          <div class="db-file">
+            <span class="file-label">scoredatalog.db:</span>
+            <span class="file-status" id="scoredatalogStatus">未検出</span>
+          </div>
+        </div>
       </div>
       
       <button class="save-btn" id="saveConfig">設定を保存</button>
@@ -332,10 +406,6 @@
       <div class="add-table-form">
         <h4>新しい難易度表を追加</h4>
         <div class="form-row">
-          <div class="form-group name">
-            <label>表名</label>
-            <input type="text" id="tableName" placeholder="例: Satelite（空の場合、表から自動取得）">
-          </div>
           <div class="form-group url">
             <label>表のURL</label>
             <input type="text" id="tableUrl" placeholder="例: https://stellabms.xyz/sl/table.html">
@@ -352,11 +422,17 @@
       <h3>ℹ️ 設定ガイド</h3>
       <p>beatorajaのデータベースファイルは通常、以下の場所にあります：</p>
       <ul>
-        <li><code>beatoraja/player/player*/score.db</code> - スコアデータ</li>
-        <li><code>beatoraja/player/player*/scorelog.db</code> - プレイログ</li>
-        <li><code>beatoraja/player/player*/scoredatalog.db</code> - プレイログ</li>
+        <li><code>beatoraja/player/player*</code> フォルダ - プレイヤーデータ
+          <ul>
+            <li>score.db - スコアデータ</li>
+            <li>scorelog.db - プレイログ</li>
+            <li>scoredatalog.db - スコアデータログ</li>
+          </ul>
+        </li>
         <li><code>beatoraja/songdata.db</code> - 楽曲情報</li>
       </ul>
+      
+      <p><strong>💡 ヒント：</strong> プレイヤーDBフォルダを選択すると、3つのDBファイル（score.db、scorelog.db、scoredatalog.db）が自動的に検出されます。</p>
       
       <h4>📊 難易度表について</h4>
       <p>難易度表は以下の形式で指定してください：</p>

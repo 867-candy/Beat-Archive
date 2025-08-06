@@ -1,5 +1,6 @@
 const state = {
   dbPaths: {
+    playerDbFolder: '', // 新しく追加: プレイヤーDBフォルダ
     score: '',
     scorelog: '',
     scoredatalog: '',
@@ -23,10 +24,59 @@ async function loadSettings() {
 
 // パス表示を更新
 function updatePathDisplays() {
-  document.getElementById('scorePath').textContent = state.dbPaths.score || '未設定';
-  document.getElementById('scorelogPath').textContent = state.dbPaths.scorelog || '未設定';
-  document.getElementById('scoredatalogPath').textContent = state.dbPaths.scoredatalog || '未設定';
+  document.getElementById('playerDbFolderPath').textContent = state.dbPaths.playerDbFolder || '未設定';
   document.getElementById('songdataPath').textContent = state.dbPaths.songdata || '未設定';
+  
+  // DBファイルの検出状況を更新
+  updateDbFileStatus();
+}
+
+// DBファイルの検出状況を更新
+async function updateDbFileStatus() {
+  const playerDbFolder = state.dbPaths.playerDbFolder;
+  
+  if (!playerDbFolder) {
+    // フォルダが未設定の場合
+    document.getElementById('scoreStatus').textContent = '未検出';
+    document.getElementById('scoreStatus').className = 'file-status missing';
+    document.getElementById('scorelogStatus').textContent = '未検出';
+    document.getElementById('scorelogStatus').className = 'file-status missing';
+    document.getElementById('scoredatalogStatus').textContent = '未検出';
+    document.getElementById('scoredatalogStatus').className = 'file-status missing';
+    return;
+  }
+  
+  // 各DBファイルの存在確認
+  const dbFiles = ['score.db', 'scorelog.db', 'scoredatalog.db'];
+  
+  for (const dbFile of dbFiles) {
+    try {
+      const fullPath = await window.api.joinPath(playerDbFolder, dbFile);
+      const exists = await window.api.fileExists(fullPath);
+      
+      const statusElement = document.getElementById(dbFile.replace('.db', 'Status'));
+      if (exists) {
+        statusElement.textContent = '検出済み';
+        statusElement.className = 'file-status found';
+        
+        // stateを更新
+        const dbType = dbFile.replace('.db', '');
+        state.dbPaths[dbType] = fullPath;
+      } else {
+        statusElement.textContent = '未検出';
+        statusElement.className = 'file-status missing';
+        
+        // stateをクリア
+        const dbType = dbFile.replace('.db', '');
+        state.dbPaths[dbType] = '';
+      }
+    } catch (error) {
+      console.error(`${dbFile}の確認中にエラー:`, error);
+      const statusElement = document.getElementById(dbFile.replace('.db', 'Status'));
+      statusElement.textContent = 'エラー';
+      statusElement.className = 'file-status missing';
+    }
+  }
 }
 
 // 難易度表リストを更新
@@ -72,16 +122,14 @@ function escapeHtml(text) {
 
 // 難易度表を追加
 async function addTable() {
-  const nameEl = document.getElementById('tableName');
   const urlEl = document.getElementById('tableUrl');
   
   // 要素の存在確認
-  if (!nameEl || !urlEl) {
+  if (!urlEl) {
     console.error('フォーム要素が見つかりません');
     return;
   }
   
-  let name = nameEl.value.trim();
   const url = urlEl.value.trim();
   
   if (!url) {
@@ -106,25 +154,23 @@ async function addTable() {
     return;
   }
   
-  // 表名が空の場合、HeaderからTableNameを取得を試行
-  if (!name) {
-    try {
-      showTableStatus('難易度表データを読み込み中...', 'info');
-      const tableData = await window.api.loadDifficultyTable(url);
-      if (tableData && tableData.header && tableData.header.name) {
-        name = tableData.header.name;
-        nameEl.value = name; // フィールドにも反映
-        showTableStatus('難易度表の名前を自動取得しました', 'success');
-      } else {
-        showTableStatus('難易度表から名前を取得できませんでした。手動で入力してください', 'error');
-        nameEl.focus();
-        return;
-      }
-    } catch (error) {
-      showTableStatus('難易度表の読み込みに失敗しました: ' + error.message, 'error');
-      nameEl.focus();
+  // 難易度表データから表名を取得
+  let name;
+  try {
+    showTableStatus('難易度表データを読み込み中...', 'info');
+    const tableData = await window.api.loadDifficultyTable(url);
+    if (tableData && tableData.header && tableData.header.name) {
+      name = tableData.header.name;
+      showTableStatus('難易度表の名前を自動取得しました', 'success');
+    } else {
+      showTableStatus('難易度表から名前を取得できませんでした', 'error');
+      urlEl.focus();
       return;
     }
+  } catch (error) {
+    showTableStatus('難易度表の読み込みに失敗しました: ' + error.message, 'error');
+    urlEl.focus();
+    return;
   }
   
   // 最後尾の優先度を取得して+1
@@ -141,7 +187,6 @@ async function addTable() {
   });
   
   // フォームをクリア
-  nameEl.value = '';
   urlEl.value = '';
   
   updateTableList();
@@ -158,9 +203,9 @@ async function addTable() {
     showTableStatus(`難易度表「${name}」を追加しましたが、設定の保存に失敗しました: ${error.message}`, 'error');
   }
   
-  // フォーカスを表名フィールドに移動
+  // フォーカスをURLフィールドに移動
   setTimeout(() => {
-    nameEl.focus();
+    urlEl.focus();
   }, 100);
 }
 
@@ -561,40 +606,17 @@ function setupEventListeners() {
     return;
   }
   
-  // DBファイル選択ボタン
-  document.getElementById('selectScore').addEventListener('click', async () => {
+  // DBファイル/フォルダ選択ボタン
+  document.getElementById('selectPlayerDbFolder').addEventListener('click', async () => {
     try {
-      const path = await window.api.selectDbPath();
-      if (path) {
-        state.dbPaths.score = path;
+      const folderPath = await window.api.selectFolderPath();
+      if (folderPath) {
+        state.dbPaths.playerDbFolder = folderPath;
         updatePathDisplays();
+        showStatus('プレイヤーDBフォルダを設定しました', 'success');
       }
     } catch (error) {
-      showStatus('ファイル選択に失敗しました: ' + error.message, 'error');
-    }
-  });
-
-  document.getElementById('selectScorelog').addEventListener('click', async () => {
-    try {
-      const path = await window.api.selectDbPath();
-      if (path) {
-        state.dbPaths.scorelog = path;
-        updatePathDisplays();
-      }
-    } catch (error) {
-      showStatus('ファイル選択に失敗しました: ' + error.message, 'error');
-    }
-  });
-
-  document.getElementById('selectScoredatalog').addEventListener('click', async () => {
-    try {
-      const path = await window.api.selectDbPath();
-      if (path) {
-        state.dbPaths.scoredatalog = path;
-        updatePathDisplays();
-      }
-    } catch (error) {
-      showStatus('ファイル選択に失敗しました: ' + error.message, 'error');
+      showStatus('フォルダ選択に失敗しました: ' + error.message, 'error');
     }
   });
 
@@ -633,7 +655,7 @@ function setupEventListeners() {
   }
   
   // フォーム入力フィールドのEnterキー処理
-  const formFields = ['tableName', 'tableUrl', 'tablePriority'];
+  const formFields = ['tableUrl'];
   formFields.forEach(fieldId => {
     const field = document.getElementById(fieldId);
     if (field) {
