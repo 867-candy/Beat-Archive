@@ -2412,10 +2412,10 @@ ipcMain.handle('load-difficulty-table', async (_, tableUrl) => {
     const headerPatterns = [
       jsonUrl,
       constructJsonUrl('header.json', tableUrl),
-      constructJsonUrl('table.json', tableConfig.url),
-      constructJsonUrl('index.json', tableConfig.url),
-      constructJsonUrl('data/header.json', tableConfig.url),
-      constructJsonUrl('json/header.json', tableConfig.url)
+      constructJsonUrl('table.json', tableUrl),
+      constructJsonUrl('index.json', tableUrl),
+      constructJsonUrl('data/header.json', tableUrl),
+      constructJsonUrl('json/header.json', tableUrl)
     ];
     
     for (const headerUrl of headerPatterns) {
