@@ -12,5 +12,9 @@ contextBridge.exposeInMainWorld('api', {
   getUpdatedSongs: (date) => ipcRenderer.invoke('get-updated-songs', date),
   getClearTypeName: (clearType) => ipcRenderer.invoke('get-clear-type-name', clearType),
   getSongScore: (sha256) => ipcRenderer.invoke('get-song-score', sha256),
-  loadDifficultyTable: (tableUrl) => ipcRenderer.invoke('load-difficulty-table', tableUrl)
+  loadDifficultyTable: (tableUrl) => ipcRenderer.invoke('load-difficulty-table', tableUrl),
+  selectDirectory: () => ipcRenderer.invoke('select-directory'),
+  takeScreenshot: (directory, filename, bounds) => ipcRenderer.invoke('take-screenshot', directory, filename, bounds),
+  splitImage: (imagePath, maxHeight, datePrefix) => ipcRenderer.invoke('split-image', imagePath, maxHeight, datePrefix),
+  takeScrollingScreenshot: (directory, datePrefix, maxSegmentHeight) => ipcRenderer.invoke('take-scrolling-screenshot', directory, datePrefix, maxSegmentHeight)
 });

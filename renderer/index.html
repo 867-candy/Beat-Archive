@@ -50,6 +50,13 @@
       border-radius: 6px;
       border-left: 4px solid #3498db;
     }
+    .section2 {
+      
+      padding: 20px 20px 5px 20px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #3498db;
+    }
     .date-controls {
       display: flex;
       align-items: center;
@@ -126,11 +133,14 @@
       <div class="date-controls">
         <input type="date" id="dateInput" />
         <button class="btn primary" id="loadBtn">読み込み</button>
+        <button class="btn" id="screenshotBtn">📷 スクリーンショット</button>
       </div>
+      <small>日付を指定して「読み込み」ボタンをクリックすると、更新された曲の一覧が表示されます。</small> <br>
+      <small>スクリーンショットを押すと、表示された曲の一覧を画像として保存できます。<br> 複数画面にまたがる場合には、全体の画像と分割された画像がそれぞれ生成されます。</small>
     </div>
 
-    <div class="section">
-      <h2>🎵 更新された曲</h2>
+    <div class="section2">
+      <h2 style="margin: 0;">🎵 更新された曲</h2>
       <ul id="songList"></ul>
     </div>
   </div>

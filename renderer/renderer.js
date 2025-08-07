@@ -24,6 +24,19 @@ function getClearTypeColor(clearTypeName) {
   return colorMap[clearTypeName] || '#e74c3c'; // デフォルト色
 }
 
+// 楽曲タイトルとサブタイトルを適切にフォーマットする関数
+function formatSongTitle(song) {
+  if (!song.title || song.title.trim() === '') {
+    return '[Unknown Song]';
+  }
+  
+  if (song.subtitle && song.subtitle.trim() !== '') {
+    return `${song.title} ${song.subtitle}`;
+  }
+  
+  return song.title;
+}
+
 async function init() {
   const config = await window.api.getConfig();
   Object.assign(state.dbPaths, config.dbPaths);
@@ -121,8 +134,8 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
         const firstPlayUpdate = updates.find(u => u.type === 'daily_first_play');
         
         if (missUpdate) {
-          // MISS改善表示
-          return `${currentValue} <span style="color: #e74c3c; font-weight: bold;">-${missUpdate.diff}</span>`;
+          // MISS改善表示（diffは負の値で保存されている）
+          return `${currentValue} <span style="color: #e74c3c; font-weight: bold;">${missUpdate.diff}</span>`;
         }
         
         // 初回プレイの場合
@@ -270,7 +283,7 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
       // 新しい表示形式で楽曲情報を表示
       li.innerHTML = `
         <div style="font-weight: bold; font-size: 1.1em;">
-          ${tableDisplay} ${song.title || '[unknown]'}
+          ${tableDisplay} ${formatSongTitle(song)}
         </div>
         <div style="margin-top: 5px; color: #2c3e50;">
           スコア: ${formatScoreDiff(updates, 'iidxScore', `${iidxScore}/${iidxMaxScore}`)} | ランク: ${formatDjLevelDiff(updates, djLevel)}${nextLevelDisplay} | MISS: ${formatMissDiff(updates, missCount)} | CLEAR: ${formatClearDiff(updates, clearTypeName)}
@@ -331,7 +344,7 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
     statsElement.style.fontWeight = 'bold';
     
     let statsHtml = `
-      <div style="color: #27ae60; font-size: 16px;">📊 この日のプレイ統計</div>
+      <div style="color: #27ae60; font-size: 16px;">📊 ${date}のプレイ統計</div>
       <div style="margin-top: 10px; line-height: 1.5;">
         🎵更新楽曲数: <span style="color: #2c3e50;">${displayedSongsCount}曲</span>`;
     
@@ -354,6 +367,108 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
     
   } catch (e) {
     list.innerHTML = `<li style="color: #e74c3c; background: #fadbd8;">エラー: ${e.message}</li>`;
+  }
+});
+
+// スクリーンショット機能
+document.getElementById('screenshotBtn').addEventListener('click', async () => {
+  const date = document.getElementById('dateInput').value;
+  if (!date) {
+    alert('日付を選択してください');
+    return;
+  }
+  
+  const songList = document.getElementById('songList');
+  if (songList.children.length === 0 || songList.querySelector('.no-results, .loading')) {
+    alert('楽曲データを読み込んでからスクリーンショットを撮影してください');
+    return;
+  }
+  
+  try {
+    // ディレクトリ選択ダイアログを開く
+    const directory = await window.api.selectDirectory();
+    if (!directory) {
+      return; // ユーザーがキャンセルした場合
+    }
+    
+    console.log('スクロール＋合成スクリーンショットを撮影中...');
+    
+    // section2の位置を取得
+    const section2 = document.querySelector('div.section2');
+    if (!section2) {
+      alert('section2要素が見つかりません');
+      return;
+    }
+    
+    // ページとビューポートの情報を取得
+    const totalPageHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+    const viewportHeight = window.innerHeight;
+    const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const maxScrollTop = totalPageHeight - viewportHeight;
+    
+    // section2の位置情報を取得
+    const section2Rect = section2.getBoundingClientRect();
+    const section2Top = section2Rect.top + currentScrollTop;
+    const section2Bottom = section2Top + section2Rect.height;
+    
+    console.log(`ページ情報: 総高さ=${totalPageHeight}, ビューポート=${viewportHeight}, 最大スクロール=${maxScrollTop}`);
+    console.log(`section2情報: top=${section2Top}, bottom=${section2Bottom}, height=${section2Rect.height}`);
+    console.log(`現在のスクロール位置: ${currentScrollTop}`);
+    
+    // スクロールが可能かどうか判定
+    const canScroll = totalPageHeight > viewportHeight;
+    console.log(`スクロール可能: ${canScroll}`);
+    
+    if (canScroll) {
+      // スクロールが可能な場合：section2が見える位置にスクロール
+      const targetScrollY = Math.max(0, Math.min(section2Top - 50, maxScrollTop));
+      console.log(`スクロール先: ${targetScrollY}`);
+      window.scrollTo(0, targetScrollY);
+      await new Promise(resolve => setTimeout(resolve, 300));
+    } else {
+      // スクロールが不要な場合：現在の位置のまま
+      console.log('ページが短いためスクロール不要');
+    }
+    
+    // ページの高さに応じて動的にセグメント数を決定
+    const section2Height = section2Rect.height;
+    
+    // 理想的なセグメント数を計算（1セグメントあたり画面の1.2〜1.5倍の高さを目安）
+    const idealSegmentHeight = Math.floor(viewportHeight * 1.3); // 画面高さの1.3倍
+    let targetSegments = Math.ceil(section2Height / idealSegmentHeight);
+    
+    // セグメント数の範囲を制限（1〜12個）
+    targetSegments = Math.max(1, Math.min(targetSegments, 12));
+    
+    // 実際のセグメント高さを計算
+    const actualSegmentHeight = Math.ceil(section2Height / targetSegments);
+    const maxSegmentHeight = actualSegmentHeight + 100; // 少し余裕を持たせる
+    
+    console.log(`動的セグメント計算: section2Height=${section2Height}px, viewportHeight=${viewportHeight}px`);
+    console.log(`理想セグメント高さ=${idealSegmentHeight}px, 目標セグメント数=${targetSegments}個`);
+    console.log(`実際セグメント高さ=${actualSegmentHeight}px, maxSegmentHeight=${maxSegmentHeight}px`);
+    
+    // section2の範囲でスクリーンショット
+    const x = 0;
+    const y = 0; // ページ全体をキャプチャしてから切り抜く
+    const width = document.documentElement.clientWidth;
+    const height = totalPageHeight;
+    const bounds = { x, y, width, height };
+    const result = await window.api.takeScrollingScreenshot(directory, date, maxSegmentHeight, bounds);
+    
+    if (result.success) {
+      if (result.files.length === 1) {
+        alert(`スクリーンショットを保存しました（${result.method}）:\n${result.files[0]}`);
+      } else {
+        alert(`分割スクリーンショット（${result.files.length}個、${result.method}）を保存しました:\n${result.files.join('\n')}`);
+      }
+    } else {
+      alert(`スクリーンショットの撮影中にエラーが発生しました: ${result.error}`);
+    }
+    
+  } catch (error) {
+    console.error('スクリーンショットエラー:', error);
+    alert(`スクリーンショットの保存中にエラーが発生しました: ${error.message}`);
   }
 });
 

@@ -693,6 +693,227 @@ async function loadSelectedDifficultyTables(config) {
       });
       
     } catch (error) {
+      console.warn(`Failed to load difficulty table ${tableConfig.name}:`, error.message);
+    }
+  }
+  
+  // 優先順位でソート
+  tables.sort((a, b) => a.priority - b.priority);
+  
+  difficultyTablesCache = tables;
+  difficultyTablesLastUpdated = now;
+  
+  return tables;
+}
+
+// 更新曲一覧で使用する難易度表のみを取得
+async function loadSelectedDifficultyTables(config) {
+  console.log('loadSelectedDifficultyTables called with config:', !!config);
+  
+  // 旧設定形式との互換性を保つ
+  const selectedUrls = config.defaultTableUrls || (config.defaultTableUrl ? [config.defaultTableUrl] : []);
+  
+  console.log('Selected table URLs for update list:', selectedUrls);
+  
+  if (!selectedUrls || selectedUrls.length === 0) {
+    console.log('No difficulty tables selected for update list, returning empty array');
+    return [];
+  }
+  
+  // 選択されたテーブルの設定のみを取得
+  const selectedTableConfigs = (config.difficultyTables || []).filter(tableConfig => 
+    selectedUrls.includes(tableConfig.url)
+  );
+  
+  console.log('Selected table configs:', selectedTableConfigs.map(t => ({name: t.name, url: t.url})));
+  
+  if (selectedTableConfigs.length === 0) {
+    console.log('No matching table configurations found for selected URLs');
+    return [];
+  }
+  
+  // キャッシュの確認
+  const now = Date.now();
+  let useCache = false;
+  
+  if (difficultyTablesCache && (now - difficultyTablesLastUpdated) < CACHE_DURATION) {
+    // キャッシュが有効な場合、選択されたテーブルのみを抽出
+    const cachedSelectedTables = difficultyTablesCache.filter(table => 
+      selectedUrls.includes(table.url)
+    );
+    
+    // 必要なテーブルがすべてキャッシュに存在するかチェック
+    const allSelectedInCache = selectedTableConfigs.every(config => 
+      cachedSelectedTables.some(cached => cached.url === config.url)
+    );
+    
+    if (allSelectedInCache) {
+      console.log(`Using cached data for ${cachedSelectedTables.length} selected tables`);
+      return cachedSelectedTables.sort((a, b) => a.priority - b.priority);
+    }
+  }
+  
+  console.log(`Loading ${selectedTableConfigs.length} selected difficulty tables...`);
+  const tables = [];
+  
+  for (const tableConfig of selectedTableConfigs) {
+    try {
+      console.log(`Loading selected table: ${tableConfig.name} from ${tableConfig.url}`);
+      
+      let headerUrl = tableConfig.url;
+      let header;
+      
+      // URLが直接JSONファイルを指しているかチェック
+      if (tableConfig.url.endsWith('.json')) {
+        console.log('Direct JSON URL detected');
+        headerUrl = tableConfig.url;
+        header = await fetchJson(headerUrl);
+      } else if (tableConfig.url.endsWith('/')) {
+        // ディレクトリURLの場合、header.jsonを自動補完
+        console.log('Directory URL detected, trying header.json');
+        headerUrl = tableConfig.url + 'header.json';
+        
+        try {
+          header = await fetchJson(headerUrl);
+          console.log('Header loaded successfully from auto-completed URL');
+        } catch (autoError) {
+          console.log(`Auto-completion failed: ${autoError.message}, falling back to HTML parsing`);
+          // HTMLページの場合の処理にフォールバック
+          const html = await fetchHtml(tableConfig.url);
+          headerUrl = extractJsonUrlFromHtml(html, tableConfig.url);
+          console.log(`Extracted JSON URL from HTML: ${headerUrl}`);
+          
+          // ヘッダー情報を取得（複数パターンを試行）
+          const headerPatterns = [
+            headerUrl,
+            constructJsonUrl('header.json', tableConfig.url),
+            constructJsonUrl('table.json', tableConfig.url),
+            constructJsonUrl('index.json', tableConfig.url),
+            constructJsonUrl('data/header.json', tableConfig.url),
+            constructJsonUrl('json/header.json', tableConfig.url)
+          ];
+          
+          for (const headerPattern of headerPatterns) {
+            try {
+              console.log(`Trying header pattern: ${headerPattern}`);
+              header = await fetchJson(headerPattern);
+              console.log(`Header loaded successfully from: ${headerPattern}`);
+              break;
+            } catch (headerError) {
+              console.log(`Failed to load header from ${headerPattern}: ${headerError.message}`);
+              continue;
+            }
+          }
+          
+          if (!header) {
+            throw new Error(`Failed to load header for ${tableConfig.name} from any pattern`);
+          }
+        }
+      } else {
+        // HTMLページの場合、metaタグからJSONのURLを抽出
+        const html = await fetchHtml(tableConfig.url);
+        headerUrl = extractJsonUrlFromHtml(html, tableConfig.url);
+        console.log(`Extracted JSON URL from HTML: ${headerUrl}`);
+        
+        // ヘッダー情報を取得（複数パターンを試行）
+        const headerPatterns = [
+          headerUrl,
+          constructJsonUrl('header.json', tableConfig.url),
+          constructJsonUrl('table.json', tableConfig.url),
+          constructJsonUrl('index.json', tableConfig.url),
+          constructJsonUrl('data/header.json', tableConfig.url),
+          constructJsonUrl('json/header.json', tableConfig.url)
+        ];
+        
+        for (const headerPattern of headerPatterns) {
+          try {
+            console.log(`Trying header pattern: ${headerPattern}`);
+            header = await fetchJson(headerPattern);
+            console.log(`Header loaded successfully from: ${headerPattern}`);
+            break;
+          } catch (headerError) {
+            console.log(`Failed to load header from ${headerPattern}: ${headerError.message}`);
+            continue;
+          }
+        }
+        
+        if (!header) {
+          throw new Error(`Failed to load header for ${tableConfig.name} from any pattern`);
+        }
+      }
+      console.log(`Header loaded successfully. Name: ${header.name}, Symbol: ${header.symbol}, Data URL: ${header.data_url}`);
+      
+      // データ部を取得
+      const dataUrl = header.data_url;
+      console.log(`Fetching data from: ${dataUrl}`);
+      
+      // data_urlが相対パスの場合、ベースURLと結合
+      let fullDataUrl = dataUrl;
+      if (!dataUrl.startsWith('http://') && !dataUrl.startsWith('https://')) {
+        try {
+          const base = new URL(headerUrl);
+          fullDataUrl = new URL(dataUrl, base.origin + base.pathname.replace(/\/[^\/]*$/, '/')).toString();
+          console.log(`Converted relative data URL to: ${fullDataUrl}`);
+        } catch (error) {
+          console.log(`Data URL conversion failed: ${error.message}`);
+          // フォールバック：単純な文字列結合
+          const baseDir = headerUrl.replace(/\/[^\/]*$/, '/');
+          fullDataUrl = baseDir + dataUrl.replace('./', '');
+          console.log(`Fallback data URL: ${fullDataUrl}`);
+        }
+      }
+      
+      // データを取得（Google Scriptsの場合は複数パターンを試行）
+      let data;
+      if (fullDataUrl.includes('script.google') || fullDataUrl.includes('script.googleusercontent.com')) {
+        console.log('Google Scripts URL detected, trying multiple patterns...');
+        
+        // Google ScriptsのURLパターンを複数試行
+        const scriptId = extractScriptId(fullDataUrl);
+        const googlePatternsToTry = [
+          fullDataUrl, // 元のURL
+          fullDataUrl.replace('script.googleusercontent.com', 'script.google.com'), // スクリプトURLに変更
+          fullDataUrl.replace('script.google.com', 'script.googleusercontent.com'), // ユーザーコンテンツURLに変更
+          // exec形式への変換を試行
+          fullDataUrl.replace(/macros\/echo\?.*/, 'macros/s/' + scriptId + '/exec'),
+          // Web app形式への変換を試行
+          `https://script.google.com/macros/s/${scriptId}/exec`,
+          `https://script.googleusercontent.com/macros/s/${scriptId}/exec`,
+          // Dev形式も試行
+          `https://script.google.com/macros/s/${scriptId}/dev`
+        ];
+        
+        // 重複を除去
+        const uniquePatterns = [...new Set(googlePatternsToTry)];
+        
+        for (const googleUrl of uniquePatterns) {
+          try {
+            console.log(`Trying Google Scripts URL: ${googleUrl}`);
+            data = await fetchJson(googleUrl);
+            console.log(`Successfully fetched data from: ${googleUrl}`);
+            break;
+          } catch (googleError) {
+            console.log(`Failed to fetch from ${googleUrl}: ${googleError.message}`);
+            if (googleUrl === uniquePatterns[uniquePatterns.length - 1]) {
+              throw new Error(`Failed to fetch Google Scripts data from all patterns: ${uniquePatterns.join(', ')}`);
+            }
+            continue;
+          }
+        }
+      } else {
+        // 通常のURL
+        data = await fetchJson(fullDataUrl);
+      }
+      
+      tables.push({
+        ...tableConfig,
+        header,
+        data,
+        symbol: header.symbol || '',
+        levelOrder: header.level_order || []
+      });
+      
+    } catch (error) {
       console.warn(`Failed to load selected difficulty table ${tableConfig.name}:`, error.message);
     }
   }
@@ -706,22 +927,22 @@ async function loadSelectedDifficultyTables(config) {
 }
 
 // 譜面のmd5/sha256から難易度表情報を検索（最高優先度のみ）
-function findChartInTables(tables, md5, sha256) {
-  for (const table of tables) {
-    for (const chart of table.data) {
-      if ((md5 && chart.md5 === md5) || (sha256 && chart.sha256 === sha256)) {
-        return {
-          table,
-          chart,
-          symbol: table.symbol,
-          level: chart.level,
-          levelOrder: table.levelOrder
-        };
-      }
-    }
-  }
-  return null;
-}
+// function findChartInTables(tables, md5, sha256) {
+//   for (const table of tables) {
+//     for (const chart of table.data) {
+//       if ((md5 && chart.md5 === md5) || (sha256 && chart.sha256 === sha256)) {
+//         return {
+//           table,
+//           chart,
+//           symbol: table.symbol,
+//           level: chart.level,
+//           levelOrder: table.levelOrder
+//         };
+//       }
+//     }
+//   }
+//   return null;
+// }
 
 // 譜面のmd5/sha256から全ての難易度表情報を検索（複数の表にまたがる場合）
 function findAllChartsInTables(tables, md5, sha256) {
@@ -959,7 +1180,7 @@ async function calculateDailyBestUpdates(sha256, targetDate, scorelogDB, scorelo
         if (missDiff > 0 && update.oldminbp < 2147483647 && update.minbp < 999999) {
           updates.push({
             type: 'daily_miss',
-            diff: missDiff,
+            diff: -missDiff, // 負の値で保存（表示時に-52として表示）
             newValue: update.minbp,
             oldValue: update.oldminbp,
             clearType: update.clear,
@@ -1336,7 +1557,7 @@ function initializeLocalDatabase() {
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1400,
+    width: 1060,
     height: 1000,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js')
@@ -1344,6 +1565,22 @@ function createWindow() {
   });
 
   win.loadFile('renderer/index.html');
+}
+
+// 楽曲のタイトルとサブタイトルを結合して表示用タイトルを生成
+function formatSongTitle(song) {
+  if (!song || !song.title || song.title.trim() === '') {
+    return '[Unknown Song]';
+  }
+  
+  const title = song.title.trim();
+  const subtitle = song.subtitle && song.subtitle.trim() ? song.subtitle.trim() : null;
+  
+  if (subtitle) {
+    return `${title} ${subtitle}`;
+  }
+  
+  return title;
 }
 
 // 更新された楽曲を検出（scorelog.db ベース + 難易度表対応）
@@ -1502,7 +1739,7 @@ ipcMain.handle('get-updated-songs', async (_, dateString) => {
       // 楽曲情報を取得（統計用・全プレイログから取得）
       const songForStats = await new Promise((resolve, reject) => {
         songdataDB.get(
-          `SELECT title, artist, md5, sha256, notes FROM ${songdataTableName} WHERE sha256 = ?`,
+          `SELECT title, subtitle, artist, md5, sha256, notes FROM ${songdataTableName} WHERE sha256 = ?`,
           [row.sha256],
           (err, data) => err ? reject(err) : resolve(data)
         );
@@ -1515,7 +1752,7 @@ ipcMain.handle('get-updated-songs', async (_, dateString) => {
           playDate: row.date
         });
       } else {
-        // 楽曲情報が見つからない場合でも統計にカウント（ノーツ数0として）
+        // 楽曲情報が見つつからない場合でも統計にカウント（ノーツ数0として）
         allPlayedSongs.push({
           title: '[Unknown Song]',
           artist: '[Unknown]',
@@ -1575,7 +1812,7 @@ ipcMain.handle('get-updated-songs', async (_, dateString) => {
       // 楽曲情報を取得（読み取り専用）- 表示用
       const song = await new Promise((resolve, reject) => {
         songdataDB.get(
-          `SELECT title, artist, md5, sha256, notes FROM ${songdataTableName} WHERE sha256 = ?`,
+          `SELECT title, subtitle, artist, md5, sha256, notes FROM ${songdataTableName} WHERE sha256 = ?`,
           [row.sha256],
           (err, data) => err ? reject(err) : resolve(data)
         );
@@ -1595,7 +1832,6 @@ ipcMain.handle('get-updated-songs', async (_, dateString) => {
 
         // titleが存在しない楽曲はUnknown扱いでも統計に含める
         const isUnknownSong = !song.title || song.title.trim() === '';
-        const displayTitle = isUnknownSong ? '[Unknown Song]' : song.title;
 
         // デバッグ用：最初の3楽曲のノーツ数をログ出力
         if (isDevelopment && result.length < 3) {
@@ -1682,7 +1918,8 @@ ipcMain.handle('get-updated-songs', async (_, dateString) => {
         result.push({
           ...currentBest,
           ...song,
-          title: displayTitle,  // 表示用タイトルを使用
+          title: song.title,  // 生のタイトルを使用（renderer.jsで結合）
+          subtitle: song.subtitle,  // サブタイトルも明示的に含める
           score: currentScore,
           minbp: currentMinbp,
           clear: currentClear,
@@ -1705,7 +1942,7 @@ ipcMain.handle('get-updated-songs', async (_, dateString) => {
 
         // デバッグ用：楽曲のノーツ数をログ出力
         if (isDevelopment) {
-          console.log(`楽曲追加: ${displayTitle}, ノーツ数: ${song.notes}, Unknown: ${isUnknownSong}`);
+          console.log(`楽曲追加: ${song.title}, ノーツ数: ${song.notes}, Unknown: ${isUnknownSong}`);
         }
 
         // 更新記録も保存（アプリケーション側のデータのみ更新）
@@ -2174,10 +2411,10 @@ ipcMain.handle('load-difficulty-table', async (_, tableUrl) => {
     const headerPatterns = [
       jsonUrl,
       constructJsonUrl('header.json', tableUrl),
-      constructJsonUrl('table.json', tableUrl),
-      constructJsonUrl('index.json', tableUrl),
-      constructJsonUrl('data/header.json', tableUrl),
-      constructJsonUrl('json/header.json', tableUrl)
+      constructJsonUrl('table.json', tableConfig.url),
+      constructJsonUrl('index.json', tableConfig.url),
+      constructJsonUrl('data/header.json', tableConfig.url),
+      constructJsonUrl('json/header.json', tableConfig.url)
     ];
     
     for (const headerUrl of headerPatterns) {
@@ -2275,6 +2512,567 @@ ipcMain.handle('load-difficulty-table', async (_, tableUrl) => {
   } catch (error) {
     console.error('難易度表データ読み込みエラー:', error);
     throw error;
+  }
+});
+
+// ディレクトリ選択ダイアログ
+ipcMain.handle('select-directory', async () => {
+  const { dialog } = require('electron');
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory'],
+    title: 'スクリーンショット保存先を選択'
+  });
+  
+  if (result.canceled) {
+    return null;
+  }
+  
+  return result.filePaths[0];
+});
+
+// スクロール＋画像合成スクリーンショット撮影
+ipcMain.handle('take-scrolling-screenshot', async (_, directory, datePrefix, maxSegmentHeight) => {
+  const { nativeImage, BrowserWindow } = require('electron');
+  const path = require('path');
+  const fs = require('fs').promises;
+  const sharp = require('sharp');
+
+  try {
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+    if (!mainWindow) {
+      throw new Error('ウィンドウが見つかりません');
+    }
+
+    console.log('スクロール撮影・画像合成処理を開始...');
+
+    const pageInfo = await mainWindow.webContents.executeJavaScript(`(() => {
+      const section2 = document.querySelector('div.section2'); // class="section2"の要素を取得
+      
+      if (!section2) {
+        throw new Error('class="section2"の要素が見つかりません');
+      }
+      
+      const rect = section2.getBoundingClientRect();
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      
+      return {
+        totalHeight: Math.max(
+          document.body.scrollHeight,
+          document.body.offsetHeight,
+          document.documentElement.clientHeight,
+          document.documentElement.scrollHeight,
+          document.documentElement.offsetHeight
+        ),
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+        devicePixelRatio: window.devicePixelRatio,
+        sectionTop: rect.top + scrollTop,
+        sectionHeight: rect.height,
+        sectionWidth: rect.width,
+        sectionLeft: rect.left
+      };
+    })()`);;
+
+    console.log('ページ情報:', pageInfo);
+    
+    // section2が見つからない場合の処理
+    if (!pageInfo.sectionTop || pageInfo.sectionHeight <= 0) {
+      console.log('class="section2"の要素が見つからないか、無効なサイズです。');
+      return { success: false, error: 'class="section2"の要素が見つかりません' };
+    }
+
+    // section2の撮影範囲を定義
+    const scrollStart = pageInfo.sectionTop;
+    const captureHeight = pageInfo.sectionHeight;
+    const captureWidth = pageInfo.sectionWidth;
+    const captureLeft = pageInfo.sectionLeft;
+    
+    console.log(`撮影範囲詳細: scrollStart=${scrollStart}, captureHeight=${captureHeight}, captureWidth=${captureWidth}, captureLeft=${captureLeft}`);
+
+    const segmentHeight = Math.min(maxSegmentHeight, pageInfo.viewportHeight);
+    const segments = Math.ceil(captureHeight / segmentHeight);
+    
+    // 動的セグメント情報の詳細ログ
+    console.log(`動的セグメント詳細:`);
+    console.log(`- maxSegmentHeight (フロントエンド指定): ${maxSegmentHeight}px`);
+    console.log(`- viewportHeight: ${pageInfo.viewportHeight}px`);
+    console.log(`- 実際使用セグメント高さ: ${segmentHeight}px`);
+    console.log(`- captureHeight (section2): ${captureHeight}px`);
+    console.log(`- 計算セグメント数: ${segments}個`);
+    console.log(`セグメント数: ${segments}, セグメント高さ: ${segmentHeight}px, 撮影範囲: ${captureHeight}px (class="section2")`)
+
+    // セグメントが1つの場合は合成処理をスキップし、section2のみを切り抜く
+    if (segments <= 1) {
+      console.log('class="section2"の要素が1画面に収まるため、単一キャプチャと切り抜きを実行します。');
+
+      if (captureHeight <= 0) {
+        console.log('class="section2"の要素が見つからないか、サイズが0です。処理をスキップします。');
+        return { success: true, files: [], segments: [], method: 'skipped' };
+      }
+
+      // スクロール可能性の判定
+      const canScroll = pageInfo.totalHeight > pageInfo.viewportHeight;
+      const maxScrollY = pageInfo.totalHeight - pageInfo.viewportHeight;
+      
+      console.log(`スクロール判定: canScroll=${canScroll}, totalHeight=${pageInfo.totalHeight}, viewportHeight=${pageInfo.viewportHeight}`);
+
+      // section2が見えるようにスクロール
+      let targetScrollY = 0;
+      if (canScroll) {
+        // スクロール可能な場合：section2の少し上から
+        targetScrollY = Math.max(0, Math.min(scrollStart - 50, maxScrollY));
+        console.log(`スクロール実行: ${targetScrollY}`);
+        await mainWindow.webContents.executeJavaScript(`window.scrollTo(0, ${targetScrollY});`);
+        await new Promise(resolve => setTimeout(resolve, 250));
+      } else {
+        // スクロール不要な場合：現在位置のまま
+        console.log('ページが短いためスクロール不要');
+        targetScrollY = 0;
+      }
+
+      const image = await mainWindow.webContents.capturePage();
+      const imageBuffer = image.toPNG(); // toBuffer() ではなく toPNG() を使用
+
+      // 画像のメタデータを確認
+      const imageMeta = await sharp(imageBuffer).metadata();
+      console.log(`キャプチャ画像サイズ: ${imageMeta.width}x${imageMeta.height}`);
+      console.log(`セクション位置: top=${scrollStart}, height=${captureHeight}, スクロール先: ${targetScrollY}`);
+
+      // sharp を使ってsection2の範囲で画像を切り抜く
+      // スクロール位置調整後の座標計算
+      const actualTop = Math.round((scrollStart - targetScrollY) * pageInfo.devicePixelRatio);
+      
+      // 切り抜き領域の計算と境界チェック
+      let extractLeft = Math.round(captureLeft * pageInfo.devicePixelRatio);
+      let extractTop = actualTop;
+      let extractWidth = Math.round(captureWidth * pageInfo.devicePixelRatio);
+      let extractHeight = Math.round(captureHeight * pageInfo.devicePixelRatio);
+      
+      // 境界チェック
+      if (extractLeft + extractWidth > imageMeta.width) {
+        console.log(`幅の調整: ${extractLeft + extractWidth} > ${imageMeta.width}`);
+        extractWidth = imageMeta.width - extractLeft;
+      }
+      if (extractTop + extractHeight > imageMeta.height) {
+        console.log(`高さの調整: ${extractTop + extractHeight} > ${imageMeta.height}`);
+        extractHeight = imageMeta.height - extractTop;
+      }
+      
+      console.log(`切り抜き領域: left=${extractLeft}, top=${extractTop}, width=${extractWidth}, height=${extractHeight}`);
+      
+      const croppedBuffer = await sharp(imageBuffer)
+        .extract({
+          left: extractLeft,
+          top: extractTop,
+          width: extractWidth,
+          height: extractHeight
+        })
+        .png()
+        .toBuffer();
+
+      const finalFilename = `beat-archive-${datePrefix}-composite.png`;
+      const finalPath = path.join(directory, finalFilename);
+      await fs.writeFile(finalPath, croppedBuffer);
+      console.log(`スクリーンショット保存完了: ${finalPath}`);
+
+      return {
+        success: true,
+        files: [finalFilename],
+        segments: [],
+        method: 'crop'
+      };
+    } else {
+      // セグメントが2つ以上の場合のみ合成処理
+      const imageSegments = [];
+      console.log(`class="section2"撮影開始: top=${scrollStart}, height=${captureHeight}`);
+
+      for (let i = 0; i < segments; i++) {
+        const scrollY = scrollStart + i * segmentHeight;
+        const actualScrollY = Math.min(scrollY, pageInfo.totalHeight - pageInfo.viewportHeight);
+        console.log(`セグメント ${i + 1}/${segments}: スクロール位置 ${actualScrollY}`);
+        
+        await mainWindow.webContents.executeJavaScript(`window.scrollTo(0, ${actualScrollY});`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const image = await mainWindow.webContents.capturePage();
+        const imageBuffer = image.toPNG();
+        const segmentFilename = `beat-archive-${datePrefix}-segment${i + 1}.png`;
+        const segmentPath = path.join(directory, segmentFilename);
+        await fs.writeFile(segmentPath, imageBuffer);
+        
+        imageSegments.push({
+          buffer: imageBuffer,
+          scrollY: actualScrollY,
+          segmentIndex: i,
+          filename: segmentFilename
+        });
+      }
+      
+      await mainWindow.webContents.executeJavaScript('window.scrollTo(0, 0);');
+      console.log('画像合成処理を開始...');
+      
+      let compositeImage = sharp(imageSegments[0].buffer);
+      const firstImageMeta = await compositeImage.metadata();
+      const totalCompositeHeight = Math.round(captureHeight * pageInfo.devicePixelRatio);
+      
+      compositeImage = sharp({
+        create: {
+          width: firstImageMeta.width,
+          height: totalCompositeHeight,
+          channels: 4,
+          background: { r: 255, g: 255, b: 255, alpha: 1 }
+        }
+      });
+      
+      const composite = [];
+      for (let i = 0; i < imageSegments.length; i++) {
+        const segment = imageSegments[i];
+        const top = Math.round((segment.scrollY - scrollStart) * pageInfo.devicePixelRatio);
+        composite.push({
+          input: segment.buffer,
+          top: Math.max(0, top),
+          left: 0
+        });
+      }
+      
+      const finalImageBuffer = await compositeImage.composite(composite).png().toBuffer();
+      
+      // section2の範囲で切り抜き
+      // まず画像の実際のサイズを確認
+      const finalImageMeta = await sharp(finalImageBuffer).metadata();
+      console.log(`合成画像サイズ: ${finalImageMeta.width}x${finalImageMeta.height}`);
+      
+      // 切り抜き領域の計算
+      let extractLeft = Math.round(captureLeft * pageInfo.devicePixelRatio);
+      let extractWidth = Math.round(captureWidth * pageInfo.devicePixelRatio);
+      let extractHeight = Math.round(captureHeight * pageInfo.devicePixelRatio);
+      
+      // 境界チェック
+      if (extractLeft + extractWidth > finalImageMeta.width) {
+        console.log(`幅の調整: ${extractLeft + extractWidth} > ${finalImageMeta.width}`);
+        extractWidth = finalImageMeta.width - extractLeft;
+      }
+      if (extractHeight > finalImageMeta.height) {
+        console.log(`高さの調整: ${extractHeight} > ${finalImageMeta.height}`);
+        extractHeight = finalImageMeta.height;
+      }
+      
+      console.log(`切り抜き領域: left=${extractLeft}, top=0, width=${extractWidth}, height=${extractHeight}`);
+      
+      const croppedBuffer = await sharp(finalImageBuffer)
+        .extract({
+          left: extractLeft,
+          top: 0,
+          width: extractWidth,
+          height: extractHeight
+        })
+        .png()
+        .toBuffer();
+      
+      const finalFilename = `beat-archive-${datePrefix}-composite.png`;
+      const finalPath = path.join(directory, finalFilename);
+      await fs.writeFile(finalPath, croppedBuffer);
+      console.log(`class="section2"スクリーンショット保存完了: ${finalPath}`);
+      
+      const finalImage = sharp(croppedBuffer);
+      const finalMeta = await finalImage.metadata();
+      
+      console.log(`最終画像メタデータ: ${finalMeta.width}x${finalMeta.height}, 分割閾値: ${maxSegmentHeight}px`);
+      
+      if (finalMeta.height <= maxSegmentHeight) {
+        return {
+          success: true,
+          files: [finalFilename],
+          segments: imageSegments.map(seg => seg.filename),
+          method: 'composite'
+        };
+      } else {
+        // 分割処理前の画像整合性チェック
+        try {
+          // 小さなテスト抽出を実行して画像の有効性を確認
+          await finalImage.extract({ left: 0, top: 0, width: Math.min(100, finalMeta.width), height: Math.min(100, finalMeta.height) }).png().toBuffer();
+          console.log('画像整合性チェック: OK - 分割処理を続行');
+        } catch (integrityError) {
+          console.log(`画像整合性チェック失敗: ${integrityError.message}`);
+          console.log('分割処理をスキップし、単一ファイルとして保存');
+          return {
+            success: true,
+            files: [finalFilename],
+            segments: imageSegments.map(seg => seg.filename),
+            method: 'composite (integrity check failed)'
+          };
+        }
+        
+        const savedFiles = [];
+        let i = 0;
+        console.log(`画像分割処理開始: 画像サイズ ${finalMeta.width}x${finalMeta.height}, maxSegmentHeight=${maxSegmentHeight}`);
+        while (true) {
+          const cropTop = Math.floor(i * maxSegmentHeight);
+          if (cropTop >= finalMeta.height) break;
+          let cropHeight = Math.floor(maxSegmentHeight);
+          if (cropTop + cropHeight > finalMeta.height) {
+            cropHeight = Math.floor(finalMeta.height - cropTop);
+          }
+          if (cropHeight <= 0) break;
+          
+          console.log(`分割 ${i + 1}: top=${cropTop}, height=${cropHeight}, left=0, width=${finalMeta.width}`);
+          console.log(`計算詳細: i=${i}, maxSegmentHeight=${maxSegmentHeight}`);
+          console.log(`計算値: i * maxSegmentHeight = ${i * maxSegmentHeight}`);
+          
+          // 厳密な境界チェック
+          if (cropTop < 0 || cropHeight <= 0 || cropTop + cropHeight > finalMeta.height || finalMeta.width <= 0) {
+            console.log(`無効な分割領域をスキップ: top=${cropTop}, height=${cropHeight}, 画像サイズ=${finalMeta.width}x${finalMeta.height}`);
+            break;
+          }
+          
+          // 整数値に確実に変換
+          const extractLeft = 0;
+          const extractTop = Math.max(0, Math.floor(cropTop));
+          let extractWidth = Math.max(1, Math.floor(finalMeta.width));
+          let extractHeight = Math.max(1, Math.floor(cropHeight));
+          
+          // 最終的な境界チェック（より保守的な安全マージンを確保）
+          if (extractTop + extractHeight >= Math.floor(finalMeta.height)) {
+            extractHeight = Math.floor(finalMeta.height) - extractTop;
+            if (extractHeight > 2) {
+              extractHeight = Math.max(1, extractHeight - 2); // 安全マージンとして2ピクセル減らす
+            }
+          }
+          if (extractWidth > Math.floor(finalMeta.width)) {
+            extractWidth = Math.floor(finalMeta.width);
+          }
+          
+          console.log(`実際の抽出領域: left=${extractLeft}, top=${extractTop}, width=${extractWidth}, height=${extractHeight}`);
+          console.log(`画像メタデータ: width=${finalMeta.width}, height=${finalMeta.height}`);
+          console.log(`境界チェック: extractTop + extractHeight = ${extractTop + extractHeight}, finalMeta.height = ${finalMeta.height}`);
+          
+          if (extractHeight <= 0 || extractWidth <= 0) {
+            console.log(`抽出領域が無効（サイズ0以下）: width=${extractWidth}, height=${extractHeight}`);
+            break;
+          }
+          
+          // さらに厳密な境界チェック
+          if (extractTop >= finalMeta.height || extractLeft >= finalMeta.width || 
+              extractTop + extractHeight > finalMeta.height || extractLeft + extractWidth > finalMeta.width ||
+              extractHeight <= 0 || extractWidth <= 0) {
+            console.log(`抽出領域が画像範囲外: extractTop=${extractTop}, extractLeft=${extractLeft}, extractWidth=${extractWidth}, extractHeight=${extractHeight}, 画像サイズ=${finalMeta.width}x${finalMeta.height}`);
+            break;
+          }
+          
+          // Sharp用の最終安全チェック（より厳密な境界確保）
+          const safeExtractHeight = Math.min(extractHeight, finalMeta.height - extractTop - 1); // 1ピクセル余裕を持たせる
+          const safeExtractWidth = Math.min(extractWidth, finalMeta.width - extractLeft);
+          
+          // 最小サイズ確保
+          if (safeExtractHeight <= 0 || safeExtractWidth <= 0) {
+            console.log(`安全化後の領域サイズが無効: width=${safeExtractWidth}, height=${safeExtractHeight}`);
+            break;
+          }
+          
+          console.log(`安全化後の抽出領域: left=${extractLeft}, top=${extractTop}, width=${safeExtractWidth}, height=${safeExtractHeight}`);
+          
+          try {
+            const partBuffer = await finalImage.extract({
+              left: extractLeft,
+              top: extractTop,
+              width: safeExtractWidth,
+              height: safeExtractHeight
+            }).png().toBuffer();
+            const partFilename = `beat-archive-${datePrefix}_part${i + 1}.png`;
+            const partPath = path.join(directory, partFilename);
+            await fs.writeFile(partPath, partBuffer);
+            savedFiles.push(partFilename);
+          } catch (extractError) {
+            console.log(`セグメント${i + 1}の抽出でエラーが発生、スキップします: ${extractError.message}`);
+            console.log(`エラー詳細: left=${extractLeft}, top=${extractTop}, width=${safeExtractWidth}, height=${safeExtractHeight}`);
+            // エラーが発生した場合はそのセグメントをスキップして続行
+          }
+          i++;
+        }
+        
+        // 分割処理の成功率をチェック
+        const expectedSegments = Math.ceil(finalMeta.height / maxSegmentHeight);
+        const successRate = savedFiles.length / expectedSegments;
+        console.log(`分割処理結果: ${savedFiles.length}/${expectedSegments}セグメント成功 (成功率: ${(successRate * 100).toFixed(1)}%)`);
+        
+        // 成功率が低い場合は単一ファイルとして保存
+        if (successRate < 0.5) {
+          console.log('分割処理の成功率が低いため、単一ファイルとして保存します');
+          // 作成済みの分割ファイルを削除
+          for (const file of savedFiles) {
+            try {
+              const partPath = path.join(directory, file);
+              await fs.unlink(partPath);
+            } catch (deleteError) {
+              console.log(`分割ファイル削除エラー: ${deleteError.message}`);
+            }
+          }
+          return {
+            success: true,
+            files: [finalFilename],
+            segments: imageSegments.map(seg => seg.filename),
+            method: 'composite (split failed)'
+          };
+        }
+        
+        if (savedFiles.length === 1) {
+          const partPath = path.join(directory, savedFiles[0]);
+          await fs.unlink(partPath);
+          return {
+            success: true,
+            files: [finalFilename],
+            segments: imageSegments.map(seg => seg.filename),
+            method: 'composite'
+          };
+        }
+        return {
+          success: true,
+          files: savedFiles,
+          segments: imageSegments.map(seg => seg.filename),
+          method: 'split'
+        };
+      }
+    }
+  } catch (error) {
+    console.error('スクロールスクリーンショット撮影エラー:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// スクリーンショット撮影（既存）
+ipcMain.handle('take-screenshot', async (_, directory, filename, bounds) => {
+  const { nativeImage } = require('electron');
+  const path = require('path');
+  const fs = require('fs').promises;
+  
+  try {
+    // メインウィンドウを取得
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+    if (!mainWindow) {
+      throw new Error('ウィンドウが見つかりません');
+    }
+    
+    let image;
+    
+    if (bounds === null || bounds === undefined) {
+      // bounds未指定の場合はページ全体をキャプチャ
+      console.log('ページ全体をキャプチャ中...');
+      image = await mainWindow.webContents.capturePage();
+    } else {
+      // デバイスピクセル比を取得
+      const devicePixelRatio = await mainWindow.webContents.executeJavaScript('window.devicePixelRatio');
+      
+      // 座標をデバイスピクセル比で調整
+      const scaledBounds = {
+        x: Math.round(bounds.x * devicePixelRatio),
+        y: Math.round(bounds.y * devicePixelRatio),
+        width: Math.round(bounds.width * devicePixelRatio),
+        height: Math.round(bounds.height * devicePixelRatio)
+      };
+      
+      console.log('Original bounds:', bounds);
+      console.log('Device pixel ratio:', devicePixelRatio);
+      console.log('Scaled bounds:', scaledBounds);
+      
+      image = await mainWindow.webContents.capturePage(scaledBounds);
+    }
+    
+    // ファイルパスを構築
+    const filePath = path.join(directory, filename);
+    
+    // PNGとして保存
+    const buffer = image.toPNG();
+    await fs.writeFile(filePath, buffer);
+    
+    console.log(`スクリーンショット保存完了: ${filePath}`);
+    return filePath;
+    
+  } catch (error) {
+    console.error('スクリーンショット撮影エラー:', error);
+    throw error;
+  }
+});
+
+
+// 画像分割処理
+ipcMain.handle('split-image', async (_, imagePath, maxHeight, datePrefix) => {
+  const { nativeImage } = require('electron');
+  const path = require('path');
+  const fs = require('fs').promises;
+  
+  try {
+    console.log(`画像分割処理開始: ${imagePath}, maxHeight: ${maxHeight}`);
+    
+    // 画像を読み込み
+    const imageBuffer = await fs.readFile(imagePath);
+    const image = nativeImage.createFromBuffer(imageBuffer);
+    const imageSize = image.getSize();
+    
+    console.log(`画像サイズ: ${imageSize.width} x ${imageSize.height}`);
+    
+    if (imageSize.height <= maxHeight) {
+      // 分割不要の場合、元の画像をリネーム
+      const directory = path.dirname(imagePath);
+      const finalFilename = `beat-archive-${datePrefix}.png`;
+      const finalPath = path.join(directory, finalFilename);
+      
+      await fs.copyFile(imagePath, finalPath);
+      await fs.unlink(imagePath); // 元のフルサイズ画像を削除
+      
+      return {
+        success: true,
+        files: [finalFilename]
+      };
+    } else {
+      // 分割処理
+      const parts = Math.ceil(imageSize.height / maxHeight);
+      const savedFiles = [];
+      const directory = path.dirname(imagePath);
+      
+      for (let i = 0; i < parts; i++) {
+        const cropY = i * maxHeight;
+        const cropHeight = Math.min(maxHeight, imageSize.height - cropY);
+        
+        console.log(`Part ${i + 1}/${parts}: Y=${cropY}, Height=${cropHeight}`);
+        
+        // 画像を切り抜き
+        const croppedImage = image.crop({
+          x: 0,
+          y: cropY,
+          width: imageSize.width,
+          height: cropHeight
+        });
+        
+        // ファイル名を生成
+        const partFilename = `beat-archive-${datePrefix}_part${i + 1}of${parts}.png`;
+        const partPath = path.join(directory, partFilename);
+        
+        // 切り抜いた画像を保存
+        const croppedBuffer = croppedImage.toPNG();
+        await fs.writeFile(partPath, croppedBuffer);
+        
+        savedFiles.push(partFilename);
+        console.log(`分割画像保存完了: ${partPath}`);
+      }
+      
+      // 元のフルサイズ画像を削除
+      await fs.unlink(imagePath);
+      
+      return {
+        success: true,
+        files: savedFiles
+      };
+    }
+    
+  } catch (error) {
+    console.error('画像分割エラー:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 });
 

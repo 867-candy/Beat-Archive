@@ -5,7 +5,7 @@ const state = {
   songs: [],
   selectedLevels: new Set(), // 選択されたレベルのセット
   songSearchText: '', // 楽曲名検索テキスト
-  sortColumn: 'level', // ソート対象のカラム (level, title, clear, misscount, score, djlevel, scorerate, lastplayed)
+  sortColumn: 'none', // ソート対象のカラム (none, level, title, clear, misscount, score, djlevel, scorerate, lastplayed)
   sortDirection: 'asc' // ソート方向 ('asc' または 'desc')
 };
 
@@ -134,6 +134,19 @@ async function loadTableData(table) {
       bodyIsArray: Array.isArray(data.body),
       bodyLength: data.body ? data.body.length : 'N/A'
     });
+
+    // header の level_order を詳しく調べる
+    console.log('=== Header Level Order Debug ===');
+    if (data.header && data.header.level_order) {
+      console.log('level_order exists:', data.header.level_order);
+      console.log('level_order type:', typeof data.header.level_order);
+      console.log('level_order length:', data.header.level_order.length);
+      console.log('First 10 level_order items:', data.header.level_order.slice(0, 10));
+    } else {
+      console.log('No level_order found in header');
+      console.log('Header keys:', Object.keys(data.header || {}));
+    }
+    console.log('===============================');
     
     // 美食研究会の場合の特別処理
     if (table.name === '美食研究会') {
@@ -254,53 +267,119 @@ async function loadSongScores() {
       // データがレベル別にグループ化されている場合（従来の処理）
       console.log('Processing level-grouped data');
       let globalIndex = 0; // 全体でのインデックス
-      for (const levelData of state.selectedTableData.body) {
-        console.log('Processing level data:', levelData);
-        const level = levelData.level || levelData.name || '?';
-        
-        if (levelData.songs && Array.isArray(levelData.songs)) {
-          console.log(`Found ${levelData.songs.length} songs in level ${level}`);
-          for (const song of levelData.songs) {
-            if (!song || (!song.sha256 && !song.md5)) {
-              console.log('Skipping song without sha256 or md5:', song);
+      
+      // level_orderの順序でレベルを処理
+      const levelOrder = state.selectedTableData.header?.level_order || [];
+      const bodyLevels = state.selectedTableData.body || [];
+      
+      console.log('=== Level Order Debug ===');
+      console.log('level_order:', levelOrder);
+      console.log('Available levels in body:', bodyLevels.map(level => level.level || level.name));
+      console.log('========================');
+      
+      // level_orderがある場合はその順序で処理
+      if (levelOrder.length > 0) {
+        for (const levelName of levelOrder) {
+          const levelData = bodyLevels.find(level => 
+            (level.level || level.name) === levelName
+          );
+          
+          if (levelData && levelData.songs && Array.isArray(levelData.songs)) {
+            console.log(`Found ${levelData.songs.length} songs in level ${levelName}`);
+            for (const song of levelData.songs) {
+              if (!song || (!song.sha256 && !song.md5)) {
+                console.log('Skipping song without sha256 or md5:', song);
+                globalIndex++;
+                continue;
+              }
+              
+              // SHA256またはMD5でスコア情報を取得
+              const hashValue = song.sha256 || song.md5;
+              const hashType = song.sha256 ? 'sha256' : 'md5';
+              console.log(`Getting score for ${hashType}: ${hashValue}`);
+              
+              const scoreData = await window.api.getSongScore(hashValue);
+              console.log(`Score data for ${song.title}:`, scoreData);
+              
+              songs.push({
+                level: levelName,
+                title: song.title || '[unknown]',
+                sha256: song.sha256 || song.md5,
+                url_diff: song.url_diff || '',
+                symbol: song.symbol || null,
+                score: scoreData ? scoreData.score : null,
+                clear: scoreData ? scoreData.clear : 0,
+                rank: scoreData ? scoreData.rank : '',
+                percentage: scoreData ? scoreData.percentage : 0,
+                points: scoreData ? scoreData.points : 0,
+                minbp: scoreData ? scoreData.minbp : null,
+                djLevel: scoreData ? scoreData.djLevel : 'F',
+                beatorajaScore: scoreData ? scoreData.beatorajaScore : 0,
+                lastPlayed: scoreData ? scoreData.lastPlayed : null,
+                originalIndex: globalIndex // 元の順序を保持
+              });
               globalIndex++;
-              continue;
             }
-            
-            // SHA256またはMD5でスコア情報を取得
-            const hashValue = song.sha256 || song.md5;
-            const hashType = song.sha256 ? 'sha256' : 'md5';
-            console.log(`Getting score for ${hashType}: ${hashValue}`);
-            
-            const scoreData = await window.api.getSongScore(hashValue);
-            console.log(`Score data for ${song.title}:`, scoreData);
-            
-            songs.push({
-              level: level,
-              title: song.title || '[unknown]',
-              sha256: song.sha256 || song.md5, // Fallback to md5 if sha256 not available
-              url_diff: song.url_diff || '',
-              symbol: song.symbol || null, // 難易度表のシンボル情報
-              score: scoreData ? scoreData.score : null,
-              clear: scoreData ? scoreData.clear : 0,
-              rank: scoreData ? scoreData.rank : '',
-              percentage: scoreData ? scoreData.percentage : 0,
-              points: scoreData ? scoreData.points : 0,
-              minbp: scoreData ? scoreData.minbp : null, // ミスカウント
-              djLevel: scoreData ? scoreData.djLevel : 'F', // DJ LEVEL
-              beatorajaScore: scoreData ? scoreData.beatorajaScore : 0, // beatorajaスコアレート
-              lastPlayed: scoreData ? scoreData.lastPlayed : null, // 最終プレイ
-              originalIndex: globalIndex // 元の順序を保持
-            });
-            globalIndex++;
           }
-        } else {
-          console.log('No songs array found in level data:', levelData);
+        }
+      } else {
+        // level_orderがない場合は元の処理
+        for (const levelData of bodyLevels) {
+          console.log('Processing level data:', levelData);
+          const level = levelData.level || levelData.name || '?';
+          
+          if (levelData.songs && Array.isArray(levelData.songs)) {
+            console.log(`Found ${levelData.songs.length} songs in level ${level}`);
+            for (const song of levelData.songs) {
+              if (!song || (!song.sha256 && !song.md5)) {
+                console.log('Skipping song without sha256 or md5:', song);
+                globalIndex++;
+                continue;
+              }
+              
+              // SHA256またはMD5でスコア情報を取得
+              const hashValue = song.sha256 || song.md5;
+              const hashType = song.sha256 ? 'sha256' : 'md5';
+              console.log(`Getting score for ${hashType}: ${hashValue}`);
+              
+              const scoreData = await window.api.getSongScore(hashValue);
+              console.log(`Score data for ${song.title}:`, scoreData);
+              
+              songs.push({
+                level: level,
+                title: song.title || '[unknown]',
+                sha256: song.sha256 || song.md5,
+                url_diff: song.url_diff || '',
+                symbol: song.symbol || null,
+                score: scoreData ? scoreData.score : null,
+                clear: scoreData ? scoreData.clear : 0,
+                rank: scoreData ? scoreData.rank : '',
+                percentage: scoreData ? scoreData.percentage : 0,
+                points: scoreData ? scoreData.points : 0,
+                minbp: scoreData ? scoreData.minbp : null,
+                djLevel: scoreData ? scoreData.djLevel : 'F',
+                beatorajaScore: scoreData ? scoreData.beatorajaScore : 0,
+                lastPlayed: scoreData ? scoreData.lastPlayed : null,
+                originalIndex: globalIndex // 元の順序を保持
+              });
+              globalIndex++;
+            }
+          } else {
+            console.log('No songs array found in level data:', levelData);
+          }
         }
       }
     }
     
     console.log(`Total songs loaded: ${songs.length}`);
+    
+    // デバッグ: 最初の10曲の順序を確認
+    console.log('=== Song Order Debug ===');
+    songs.slice(0, 15).forEach((song, index) => {
+      console.log(`${index}: originalIndex=${song.originalIndex}, level=${song.level}, title=${song.title}`);
+    });
+    console.log('========================');
+    
     state.songs = songs;
     console.log('State.songs after setting:', state.songs.length);
     console.log('First few songs:', state.songs.slice(0, 3));
@@ -573,7 +652,7 @@ function updateSongTable() {
             クリア
           </th>
           <th class="misscount-cell sortable ${state.sortColumn === 'misscount' ? 'sorted-' + state.sortDirection : ''}" data-column="misscount">
-            ミスカウント
+            MISS
           </th>
           <th class="score-cell sortable ${state.sortColumn === 'score' ? 'sorted-' + state.sortDirection : ''}" data-column="score">スコア</th>
           <th class="djlevel-cell sortable ${state.sortColumn === 'djlevel' ? 'sorted-' + state.sortDirection : ''}" data-column="djlevel">
@@ -726,13 +805,39 @@ initialize();
 function getSortedSongs() {
   const songs = [...state.songs];
   
+  console.log(`=== Sort Debug: sortColumn=${state.sortColumn}, sortDirection=${state.sortDirection} ===`);
+  
   songs.sort((a, b) => {
     let compareValue = 0;
     
     switch (state.sortColumn) {
+      case 'none':
+        // 元の順序（originalIndex）
+        compareValue = (a.originalIndex || 0) - (b.originalIndex || 0);
+        break;
+        
       case 'level':
-        // レベルソートの改善：originalIndexを基準とした順序を保持
-        compareValue = a.originalIndex - b.originalIndex;
+        // レベルソート：まず数値レベル、次に特殊レベル
+        const levelA = a.level;
+        const levelB = b.level;
+        
+        // 数値レベルかどうかを判定
+        const isNumericA = !isNaN(parseInt(levelA));
+        const isNumericB = !isNaN(parseInt(levelB));
+        
+        if (isNumericA && isNumericB) {
+          // 両方数値の場合
+          compareValue = parseInt(levelA) - parseInt(levelB);
+        } else if (isNumericA && !isNumericB) {
+          // Aが数値、Bが特殊レベルの場合、数値を先に
+          compareValue = -1;
+        } else if (!isNumericA && isNumericB) {
+          // Aが特殊レベル、Bが数値の場合、数値を先に
+          compareValue = 1;
+        } else {
+          // 両方特殊レベルの場合、文字列比較
+          compareValue = levelA.localeCompare(levelB, 'ja');
+        }
         break;
         
       case 'title':
@@ -780,13 +885,7 @@ function getSortedSongs() {
         
       default:
         // デフォルトは元の順序（originalIndex）
-        if (a.originalIndex !== undefined && b.originalIndex !== undefined) {
-          compareValue = a.originalIndex - b.originalIndex;
-        } else {
-          const levelA = parseFloat(a.level) || 999;
-          const levelB = parseFloat(b.level) || 999;
-          compareValue = levelA - levelB;
-        }
+        compareValue = (a.originalIndex || 0) - (b.originalIndex || 0);
         break;
     }
     
@@ -802,6 +901,15 @@ function getSortedSongs() {
     
     return compareValue;
   });
+  
+  // デバッグ: ソート結果の最初の10曲を確認
+  if (state.sortColumn === 'none') {
+    console.log('=== Sorted Result Debug (first 15) ===');
+    songs.slice(0, 15).forEach((song, index) => {
+      console.log(`${index}: originalIndex=${song.originalIndex}, level=${song.level}, title=${song.title}`);
+    });
+    console.log('=====================================');
+  }
   
   return songs;
 }
