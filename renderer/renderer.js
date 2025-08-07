@@ -342,9 +342,12 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
     statsElement.style.background = '#e8f5e8';
     statsElement.style.borderLeft = '4px solid #27ae60';
     statsElement.style.fontWeight = 'bold';
+    statsElement.style.marginBottom = '30px';
+    statsElement.style.marginTop = '30px';
+    statsElement.style.fontSize = '1.3rem';
     
     let statsHtml = `
-      <div style="color: #27ae60; font-size: 16px;">📊 ${date}のプレイ統計</div>
+      <div style="color: #27ae60; font-size: 1.3rem;">📊 ${date}のプレイ統計</div>
       <div style="margin-top: 10px; line-height: 1.5;">
         🎵更新楽曲数: <span style="color: #2c3e50;">${displayedSongsCount}曲</span>`;
     
