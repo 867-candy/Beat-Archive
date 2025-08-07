@@ -1559,6 +1559,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1060,
     height: 1000,
+    autoHideMenuBar: true, // メニューバーを自動的に隠す
     webPreferences: {
       preload: path.join(__dirname, 'preload.js')
     }

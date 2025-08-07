@@ -13,6 +13,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.1.7] - 2025-08-08
+
+### Added
+- 更新曲スクリーンショット機能
+
+### Changed
+- ナビゲーションのpaddingを削除
+- electronのメニューバーを非表示に変更
+- プレイ統計に日付を表示するように変更
+- プレイ統計のフォントサイズを大きくするよう変更
+
+### Fixed
+- 更新曲にて#subtitleが出ない不具合の修正
+- NOPLAYから途中でやめた場合にミスカウントが正常に表示されない不具合の修正
+
 ## [1.1.6] - 2025-08-06
 
 ### Added
