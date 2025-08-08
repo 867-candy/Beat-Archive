@@ -18,5 +18,11 @@ contextBridge.exposeInMainWorld('api', {
   splitImage: (imagePath, maxHeight, datePrefix) => ipcRenderer.invoke('split-image', imagePath, maxHeight, datePrefix),
   takeScrollingScreenshot: (directory, datePrefix, maxSegmentHeight) => ipcRenderer.invoke('take-scrolling-screenshot', directory, datePrefix, maxSegmentHeight),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
-  convertMd5ToSha256: (md5) => ipcRenderer.invoke('convert-md5-to-sha256', md5)
+  convertMd5ToSha256: (md5) => ipcRenderer.invoke('convert-md5-to-sha256', md5),
+  copyToClipboard: (text) => ipcRenderer.invoke('copy-to-clipboard', text),
+  copyImageToClipboard: (imagePath) => ipcRenderer.invoke('copy-image-to-clipboard', imagePath),
+  openTwitterPost: (text) => ipcRenderer.invoke('open-twitter-post', text),
+  getLastScreenshotPath: () => ipcRenderer.invoke('get-last-screenshot-path'),
+  updateLastScreenshotPath: (imagePath, directory) => ipcRenderer.invoke('update-last-screenshot-path', imagePath, directory),
+  openDirectory: (directoryPath) => ipcRenderer.invoke('open-directory', directoryPath)
 });

@@ -1393,7 +1393,9 @@ let config = {
     scorelog: '',
     scoredatalog: '',
     songdata: ''
-  }
+  },
+  lastScreenshotPath: null,
+  lastScreenshotDirectory: null
 };
 
 function loadConfig() {
@@ -2952,6 +2954,18 @@ ipcMain.handle('take-scrolling-screenshot', async (_, directory, datePrefix, max
         if (savedFiles.length === 1) {
           const partPath = path.join(directory, savedFiles[0]);
           await fs.unlink(partPath);
+          
+          // configに最新のスクリーンショットパスを保存（compressed版を優先）
+          const compressedPath = finalFilename.replace(/(\.[^.]+)$/, '_compressed$1');
+          try {
+            await fs.access(compressedPath);
+            config.lastScreenshotPath = compressedPath;
+          } catch {
+            config.lastScreenshotPath = finalFilename;
+          }
+          config.lastScreenshotDirectory = directory;
+          saveConfig();
+          
           return {
             success: true,
             files: [finalFilename],
@@ -2959,6 +2973,22 @@ ipcMain.handle('take-scrolling-screenshot', async (_, directory, datePrefix, max
             method: 'composite'
           };
         }
+        
+        // 分割ファイルの場合、最初のファイルのcompressed版があればそれを保存
+        if (savedFiles.length > 0) {
+          const firstFile = path.join(directory, savedFiles[0]);
+          const compressedPath = firstFile.replace(/(\.[^.]+)$/, '_compressed$1');
+          
+          try {
+            await fs.access(compressedPath);
+            config.lastScreenshotPath = compressedPath;
+          } catch {
+            config.lastScreenshotPath = firstFile;
+          }
+          config.lastScreenshotDirectory = directory;
+          saveConfig();
+        }
+        
         return {
           success: true,
           files: savedFiles,
@@ -3180,5 +3210,118 @@ ipcMain.handle('convert-md5-to-sha256', async (_, md5) => {
   } catch (error) {
     console.error('Error in convert-md5-to-sha256:', error);
     return null;
+  }
+});
+
+// クリップボードコピー機能
+ipcMain.handle('copy-to-clipboard', async (_, text) => {
+  try {
+    const { clipboard } = require('electron');
+    clipboard.writeText(text);
+    return { success: true };
+  } catch (error) {
+    console.error('Error copying to clipboard:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 画像をクリップボードにコピーする機能
+ipcMain.handle('copy-image-to-clipboard', async (_, imagePath) => {
+  try {
+    const { nativeImage, clipboard } = require('electron');
+    
+    // 画像ファイルを読み込み
+    const image = nativeImage.createFromPath(imagePath);
+    
+    if (image.isEmpty()) {
+      return { success: false, error: '画像ファイルが読み込めませんでした' };
+    }
+    
+    // クリップボードに画像をコピー
+    clipboard.writeImage(image);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error copying image to clipboard:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Twitter投稿用ブラウザ開く機能
+ipcMain.handle('open-twitter-post', async (_, text) => {
+  try {
+    // テキストをエンコード
+    const encodedText = encodeURIComponent(text);
+    // Twitter投稿URLを作成
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodedText}`;
+    
+    // ブラウザでTwitter投稿ページを開く
+    await shell.openExternal(twitterUrl);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error opening Twitter:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 最後に保存されたスクリーンショットのパスを取得
+ipcMain.handle('get-last-screenshot-path', () => {
+  return {
+    path: config.lastScreenshotPath,
+    directory: config.lastScreenshotDirectory
+  };
+});
+
+// 最後のスクリーンショットパスを更新
+ipcMain.handle('update-last-screenshot-path', (event, imagePath, directory) => {
+  try {
+    console.log(`[main.js] 最後のスクリーンショットパスを更新: ${imagePath}`);
+    config.lastScreenshotPath = imagePath;
+    config.lastScreenshotDirectory = directory;
+    
+    // configファイルに保存
+    saveConfig();
+    
+    return {
+      success: true,
+      path: config.lastScreenshotPath,
+      directory: config.lastScreenshotDirectory
+    };
+  } catch (error) {
+    console.error('[main.js] スクリーンショットパス更新エラー:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// ディレクトリをエクスプローラで開く
+ipcMain.handle('open-directory', async (event, directoryPath) => {
+  try {
+    console.log('[main.js] ディレクトリを開く:', directoryPath);
+    
+    if (!directoryPath || !fs.existsSync(directoryPath)) {
+      console.error('[main.js] ディレクトリが存在しません:', directoryPath);
+      return {
+        success: false,
+        error: 'ディレクトリが存在しません'
+      };
+    }
+    
+    await shell.openPath(directoryPath);
+    console.log('[main.js] ディレクトリを正常に開きました:', directoryPath);
+    
+    return {
+      success: true,
+      path: directoryPath
+    };
+  } catch (error) {
+    console.error('[main.js] ディレクトリを開く際のエラー:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 });

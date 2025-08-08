@@ -88,6 +88,13 @@
     .btn.primary:hover {
       background: #229954;
     }
+    .btn.twitter {
+      background: #1da1f2;
+      color: white;
+    }
+    .btn.twitter:hover {
+      background: #0d8bd9;
+    }
     #songList {
       list-style: none;
       padding: 0;
@@ -133,10 +140,14 @@
       <div class="date-controls">
         <input type="date" id="dateInput" />
         <button class="btn primary" id="loadBtn">読み込み</button>
-        <button class="btn" id="screenshotBtn">📷 スクリーンショット</button>
+        <button class="btn" id="screenshotBtn">スクリーンショット</button>
+        <button class="btn twitter" id="twitterBtn"> X投稿</button>
       </div>
-      <small>日付を指定して「読み込み」ボタンをクリックすると、更新された曲の一覧が表示されます。</small> <br>
-      <small>スクリーンショットを押すと、表示された曲の一覧を画像として保存できます。<br> 複数画面にまたがる場合には、全体の画像と分割された画像がそれぞれ生成されます。</small>
+      <h3>使い方</h3>
+      <p>日付を指定して「読み込み」ボタンをクリックすると、更新された曲の一覧が表示されます。</p>
+      <p>スクリーンショットを押すと、表示された曲の一覧を画像として保存できます。<br> 複数画面にまたがる場合には、全体の画像と分割された画像がそれぞれ生成されます。</p>
+      <p>X投稿を押すと、プレイ統計をXに投稿するためのページが開きます。<br>スクリーンショットが保存されているディレクトリが開かれるので、画像を手動で添付してから投稿してください。</p>
+     
     </div>
 
     <div class="section2">
