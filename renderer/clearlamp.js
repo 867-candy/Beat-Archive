@@ -6,17 +6,140 @@ const state = {
   selectedLevels: new Set(), // 選択されたレベルのセット
   songSearchText: '', // 楽曲名検索テキスト
   sortColumn: 'none', // ソート対象のカラム (none, level, title, clear, misscount, score, djlevel, scorerate, lastplayed)
-  sortDirection: 'asc' // ソート方向 ('asc' または 'desc')
+  sortDirection: 'asc', // ソート方向 ('asc' または 'desc')
+  songLinkService: 'none' // 楽曲リンクサービス設定
 };
+
+// 楽曲リンクURL生成関数
+async function generateSongUrl(song, linkService) {
+  // 特定の楽曲のデバッグ情報を出力
+  const isDistanceFields = song.title && song.title.includes('Distance Fields');
+  
+  if (isDistanceFields) {
+    console.log('=== DEBUG: generateSongUrl for Distance Fields ===');
+  }
+  
+  console.log('generateSongUrl called with:', {
+    title: song.title,
+    linkService: linkService,
+    md5: song.md5,
+    sha256: song.sha256,
+    originalMd5: song.originalMd5,
+    originalSha256: song.originalSha256,
+    clear: song.clear
+  });
+  
+  if (!linkService || linkService === 'none' || linkService === '') {
+    console.log('Link service is none or empty, returning null');
+    if (isDistanceFields) {
+      console.log('=== Distance Fields: Link service is none or empty ===');
+    }
+    return null;
+  }
+  
+  // データベースから取得した値を優先し、なければ難易度表のオリジナル値を使用
+  const md5 = song.md5 || song.originalMd5;
+  let sha256 = song.sha256 || song.originalSha256;
+  
+  console.log(`Final MD5: ${md5}, Final SHA256: ${sha256} for song: ${song.title}`);
+  
+  if (isDistanceFields) {
+    console.log('Distance Fields final values:', { md5, sha256, linkService });
+  }
+  
+  switch (linkService) {
+    case 'lr2ir':
+      if (md5) {
+        const url = `http://www.dream-pro.info/~lavalse/LR2IR/search.cgi?mode=ranking&bmsmd5=${md5}`;
+        console.log('Generated LR2IR URL:', url);
+        return url;
+      } else {
+        console.log('No MD5 available for LR2IR');
+      }
+      break;
+    case 'mochair':
+      if (isDistanceFields) {
+        console.log('=== Distance Fields: Processing MochaIR case ===');
+        console.log('Initial SHA256:', sha256, 'Initial MD5:', md5);
+      }
+      
+      // SHA256がない場合、MD5からSHA256への変換を試行
+      if (!sha256 && md5) {
+        try {
+          console.log(`Converting MD5 to SHA256 for MochaIR URL: ${md5} (song: ${song.title})`);
+          sha256 = await window.api.convertMd5ToSha256(md5);
+          if (sha256) {
+            console.log(`Successfully converted MD5 to SHA256 for MochaIR: ${sha256} (song: ${song.title})`);
+          } else {
+            console.log(`Failed to convert MD5 to SHA256 for MochaIR: ${md5} (song: ${song.title})`);
+          }
+        } catch (error) {
+          console.error(`Error converting MD5 to SHA256 for MochaIR (song: ${song.title}):`, error);
+        }
+      }
+      
+      if (isDistanceFields) {
+        console.log('Distance Fields after conversion - SHA256:', sha256);
+      }
+      
+      if (sha256) {
+        const url = `http://mocha-repository.info/song.php?sha256=${sha256}`;
+        console.log('Generated MochaIR URL:', url);
+        if (isDistanceFields) {
+          console.log('=== Distance Fields: Generated MochaIR URL ===', url);
+        }
+        return url;
+      } else {
+        console.log(`No SHA256 available for MochaIR (song: ${song.title})`);
+        if (isDistanceFields) {
+          console.log('=== Distance Fields: No SHA256 available for MochaIR ===');
+        }
+      }
+      break;
+    case 'bms-score-viewer':
+      if (md5) {
+        const url = `https://bms-score-viewer.pages.dev/view?md5=${md5}`;
+        console.log('Generated BMS Score Viewer URL:', url);
+        return url;
+      } else {
+        console.log('No MD5 available for BMS Score Viewer');
+      }
+      break;
+    default:
+      console.log('Unknown link service:', linkService);
+  }
+  
+  if (isDistanceFields) {
+    console.log('=== Distance Fields: generateSongUrl returning null ===');
+  }
+  
+  console.log('No URL generated, returning null');
+  return null;
+}
 
 // 初期化
 async function initialize() {
   try {
     await loadDifficultyTables();
+    await loadSettings();
     setupEventListeners();
   } catch (error) {
     console.error('初期化エラー:', error);
     showError('初期化に失敗しました: ' + error.message);
+  }
+}
+
+// 設定を読み込み
+async function loadSettings() {
+  try {
+    const config = await window.api.getConfig();
+    state.songLinkService = config.songLinkService || 'none';
+    console.log('=== Settings loaded ===');
+    console.log('Loaded songLinkService setting:', state.songLinkService);
+    console.log('Full config:', config);
+    console.log('=== End Settings ===');
+  } catch (error) {
+    console.error('設定の読み込みエラー:', error);
   }
 }
 
@@ -84,7 +207,7 @@ async function handleTableChange(event) {
     await loadSongScores();
     
     console.log('ステップ3: 表示更新');
-    updateDisplay();
+    await updateDisplay();
     
     console.log('=== 難易度表読み込み完了 ===');
   } catch (error) {
@@ -99,7 +222,7 @@ async function handleTableChange(event) {
 }
 
 // レベルフィルタ変更時の処理
-function handleLevelFilterChange(event) {
+async function handleLevelFilterChange(event) {
   const selectedValue = event.target.value;
   state.selectedLevels.clear();
   
@@ -112,13 +235,13 @@ function handleLevelFilterChange(event) {
     state.selectedLevels.add(selectedValue);
   }
   
-  updateSongTable();
+  await updateSongTable();
 }
 
 // 楽曲名検索変更時の処理
-function handleSongSearchChange(event) {
+async function handleSongSearchChange(event) {
   state.songSearchText = event.target.value.toLowerCase();
-  updateSongTable();
+  await updateSongTable();
 }
 
 // 難易度表データを読み込み
@@ -212,6 +335,20 @@ async function loadSongScores() {
           const currentSymbol = state.selectedTableData.header?.symbol || '';
           const displaySymbol = currentSymbol ? `${currentSymbol}${song.level || ''}` : (song.level || '');
           
+          // SHA256が存在しない場合はMD5から変換を試行
+          let convertedSha256 = song.sha256;
+          if (!convertedSha256 && song.md5) {
+            try {
+              console.log(`Converting MD5 to SHA256 for ${song.title}: ${song.md5}`);
+              convertedSha256 = await window.api.convertMd5ToSha256(song.md5);
+              if (convertedSha256) {
+                console.log(`Successfully converted for ${song.title}: ${convertedSha256}`);
+              }
+            } catch (error) {
+              console.error(`Error converting MD5 to SHA256 for ${song.title}:`, error);
+            }
+          }
+          
           // レベル情報のデバッグ
           if (song.level === undefined || song.level === null || song.level === '?') {
             console.log(`Level issue found for song: ${song.title}`, {
@@ -222,14 +359,45 @@ async function loadSongScores() {
             });
           }
           
+          // URL生成
+          const tempSong = {
+            md5: song.md5,
+            sha256: convertedSha256,
+            originalMd5: song.md5,
+            originalSha256: convertedSha256 || song.sha256,
+            title: song.title || '[unknown]'
+          };
+          
+          // 特定の楽曲のデバッグ情報を出力
+          if (song.title && song.title.includes('Distance Fields')) {
+            console.log('=== DEBUG: Distance Fields Data Creation ===');
+            console.log('Original song data:', {
+              title: song.title,
+              md5: song.md5,
+              sha256: song.sha256,
+              level: song.level,
+              clear: scoreData ? scoreData.clear : -1
+            });
+            console.log('TempSong for URL generation:', tempSong);
+            console.log('Link service:', state.songLinkService);
+            console.log('=== END DEBUG ===');
+          }
+          
+          console.log(`Generating URL for song: ${tempSong.title}, service: ${state.songLinkService}, MD5: ${tempSong.md5}, SHA256: ${tempSong.sha256}, originalSHA256: ${tempSong.originalSha256}`);
+          const cachedUrl = await generateSongUrl(tempSong, state.songLinkService);
+          console.log(`Generated cached URL for ${tempSong.title}: ${cachedUrl}`);
+          
           songs.push({
             level: song.level !== undefined && song.level !== null ? song.level : '?',
             title: song.title || '[unknown]',
-            sha256: song.sha256 || song.md5, // Fallback to md5 if sha256 not available
+            md5: song.md5, // MD5ハッシュ値
+            sha256: convertedSha256, // 変換されたSHA256（元のSHA256または変換結果）
+            originalMd5: song.md5, // 難易度表のオリジナルMD5
+            originalSha256: convertedSha256 || song.sha256, // 変換済みSHA256または元のSHA256
             url_diff: song.url_diff || '',
             symbol: displaySymbol, // 難易度表のシンボル情報
             score: scoreData ? scoreData.score : null,
-            clear: scoreData ? scoreData.clear : 0,
+            clear: scoreData ? scoreData.clear : -1, // scoreDataが取得できない場合はNO SONG(-1)
             rank: scoreData ? scoreData.rank : '',
             percentage: scoreData ? scoreData.percentage : 0,
             points: scoreData ? scoreData.points : 0,
@@ -237,6 +405,7 @@ async function loadSongScores() {
             djLevel: scoreData ? scoreData.djLevel : 'F', // DJ LEVEL
             beatorajaScore: scoreData ? scoreData.beatorajaScore : 0, // beatorajaスコアレート
             lastPlayed: scoreData ? scoreData.lastPlayed : null, // 最終プレイ
+            cachedUrl: cachedUrl, // 事前生成されたURL
             originalIndex: index // 元の順序を保持
           });
         } catch (scoreError) {
@@ -244,14 +413,42 @@ async function loadSongScores() {
           // エラーが発生してもスコア情報なしで楽曲を追加
           const currentSymbol = state.selectedTableData.header?.symbol || '';
           const fallbackSymbol = currentSymbol ? `${currentSymbol}${song.level || ''}` : (song.level || '');
+          
+          // SHA256が存在しない場合はMD5から変換を試行（エラー時も実行）
+          let convertedSha256 = song.sha256;
+          if (!convertedSha256 && song.md5) {
+            try {
+              console.log(`Converting MD5 to SHA256 for ${song.title} (error fallback): ${song.md5}`);
+              convertedSha256 = await window.api.convertMd5ToSha256(song.md5);
+              if (convertedSha256) {
+                console.log(`Successfully converted for ${song.title} (error fallback): ${convertedSha256}`);
+              }
+            } catch (error) {
+              console.error(`Error converting MD5 to SHA256 for ${song.title} (error fallback):`, error);
+            }
+          }
+          
+          // URL生成
+          const tempSong2 = {
+            md5: song.md5,
+            sha256: convertedSha256,
+            originalMd5: song.md5,
+            originalSha256: convertedSha256 || song.sha256,
+            title: song.title || '[unknown]'
+          };
+          const cachedUrl2 = await generateSongUrl(tempSong2, state.songLinkService);
+          
           songs.push({
             level: song.level || '?',
             title: song.title || '[unknown]',
-            sha256: song.sha256 || song.md5, // Fallback to md5 if sha256 not available
+            md5: song.md5, // MD5ハッシュ値
+            sha256: convertedSha256, // 変換されたSHA256（元のSHA256または変換結果）
+            originalMd5: song.md5, // 難易度表のオリジナルMD5
+            originalSha256: convertedSha256 || song.sha256, // 変換済みSHA256または元のSHA256
             url_diff: song.url_diff || '',
             symbol: fallbackSymbol, // フォールバック用シンボル情報
             score: null,
-            clear: 0,
+            clear: -1, // エラー時はNO SONGとして扱う
             rank: '',
             percentage: 0,
             points: 0,
@@ -259,6 +456,7 @@ async function loadSongScores() {
             djLevel: 'F', // DJ LEVEL
             beatorajaScore: 0, // beatorajaスコアレート
             lastPlayed: null, // 最終プレイ
+            cachedUrl: cachedUrl2, // 事前生成されたURL
             originalIndex: index
           });
         }
@@ -301,14 +499,41 @@ async function loadSongScores() {
               const scoreData = await window.api.getSongScore(hashValue);
               console.log(`Score data for ${song.title}:`, scoreData);
               
+              // SHA256が存在しない場合はMD5から変換を試行
+              let convertedSha256 = song.sha256;
+              if (!convertedSha256 && song.md5) {
+                try {
+                  console.log(`Converting MD5 to SHA256 for ${song.title}: ${song.md5}`);
+                  convertedSha256 = await window.api.convertMd5ToSha256(song.md5);
+                  if (convertedSha256) {
+                    console.log(`Successfully converted for ${song.title}: ${convertedSha256}`);
+                  }
+                } catch (error) {
+                  console.error(`Error converting MD5 to SHA256 for ${song.title}:`, error);
+                }
+              }
+              
+              // URL生成
+              const tempSong3 = {
+                md5: song.md5,
+                sha256: convertedSha256,
+                originalMd5: song.md5,
+                originalSha256: convertedSha256 || song.sha256,
+                title: song.title || '[unknown]'
+              };
+              const cachedUrl3 = await generateSongUrl(tempSong3, state.songLinkService);
+              
               songs.push({
                 level: levelName,
                 title: song.title || '[unknown]',
-                sha256: song.sha256 || song.md5,
+                md5: song.md5, // MD5ハッシュ値
+                sha256: convertedSha256, // 変換されたSHA256（元のSHA256または変換結果）
+                originalMd5: song.md5, // 難易度表のオリジナルMD5
+                originalSha256: convertedSha256 || song.sha256, // 変換済みSHA256または元のSHA256
                 url_diff: song.url_diff || '',
                 symbol: song.symbol || null,
                 score: scoreData ? scoreData.score : null,
-                clear: scoreData ? scoreData.clear : 0,
+                clear: scoreData ? scoreData.clear : -1, // scoreDataが取得できない場合はNO SONG(-1)
                 rank: scoreData ? scoreData.rank : '',
                 percentage: scoreData ? scoreData.percentage : 0,
                 points: scoreData ? scoreData.points : 0,
@@ -316,6 +541,7 @@ async function loadSongScores() {
                 djLevel: scoreData ? scoreData.djLevel : 'F',
                 beatorajaScore: scoreData ? scoreData.beatorajaScore : 0,
                 lastPlayed: scoreData ? scoreData.lastPlayed : null,
+                cachedUrl: cachedUrl3, // 事前生成されたURL
                 originalIndex: globalIndex // 元の順序を保持
               });
               globalIndex++;
@@ -345,14 +571,41 @@ async function loadSongScores() {
               const scoreData = await window.api.getSongScore(hashValue);
               console.log(`Score data for ${song.title}:`, scoreData);
               
+              // SHA256が存在しない場合はMD5から変換を試行
+              let convertedSha256 = song.sha256;
+              if (!convertedSha256 && song.md5) {
+                try {
+                  console.log(`Converting MD5 to SHA256 for ${song.title}: ${song.md5}`);
+                  convertedSha256 = await window.api.convertMd5ToSha256(song.md5);
+                  if (convertedSha256) {
+                    console.log(`Successfully converted for ${song.title}: ${convertedSha256}`);
+                  }
+                } catch (error) {
+                  console.error(`Error converting MD5 to SHA256 for ${song.title}:`, error);
+                }
+              }
+              
+              // URL生成
+              const tempSong4 = {
+                md5: song.md5,
+                sha256: convertedSha256,
+                originalMd5: song.md5,
+                originalSha256: convertedSha256 || song.sha256,
+                title: song.title || '[unknown]'
+              };
+              const cachedUrl4 = await generateSongUrl(tempSong4, state.songLinkService);
+              
               songs.push({
                 level: level,
                 title: song.title || '[unknown]',
-                sha256: song.sha256 || song.md5,
+                md5: song.md5, // MD5ハッシュ値
+                sha256: convertedSha256, // 変換されたSHA256（元のSHA256または変換結果）
+                originalMd5: song.md5, // 難易度表のオリジナルMD5
+                originalSha256: convertedSha256 || song.sha256, // 変換済みSHA256または元のSHA256
                 url_diff: song.url_diff || '',
                 symbol: song.symbol || null,
                 score: scoreData ? scoreData.score : null,
-                clear: scoreData ? scoreData.clear : 0,
+                clear: scoreData ? scoreData.clear : -1, // scoreDataが取得できない場合はNO SONG(-1)
                 rank: scoreData ? scoreData.rank : '',
                 percentage: scoreData ? scoreData.percentage : 0,
                 points: scoreData ? scoreData.points : 0,
@@ -360,6 +613,7 @@ async function loadSongScores() {
                 djLevel: scoreData ? scoreData.djLevel : 'F',
                 beatorajaScore: scoreData ? scoreData.beatorajaScore : 0,
                 lastPlayed: scoreData ? scoreData.lastPlayed : null,
+                cachedUrl: cachedUrl4, // 事前生成されたURL
                 originalIndex: globalIndex // 元の順序を保持
               });
               globalIndex++;
@@ -396,12 +650,12 @@ async function loadSongScores() {
 }
 
 // 表示を更新
-function updateDisplay() {
+async function updateDisplay() {
   console.log('=== updateDisplay 開始 ===');
   updateStats();
   updateChart();
-  updateSongTable();
-  createLevelDropdown();
+  await updateSongTable();
+  await createLevelDropdown();
   console.log('=== updateDisplay 完了 ===');
 }
 
@@ -411,12 +665,14 @@ function updateStats() {
   console.log('state.songs length:', state.songs ? state.songs.length : 'undefined');
   
   const totalSongs = state.songs.length;
+  const availableSongs = state.songs.filter(song => song.clear >= 0).length; // NO SONGを除外
   const playedSongs = state.songs.filter(song => song.clear > 0).length;
   const clearedSongs = state.songs.filter(song => song.clear >= 2).length; // EASY以上
   const hardClearedSongs = state.songs.filter(song => song.clear >= 5).length; // HARD以上
   
   console.log('Statistics calculated:', {
     totalSongs,
+    availableSongs,
     playedSongs,
     clearedSongs,
     hardClearedSongs
@@ -424,8 +680,8 @@ function updateStats() {
   
   document.getElementById('totalSongs').textContent = totalSongs;
   document.getElementById('playedSongs').textContent = playedSongs;
-  document.getElementById('clearRate').textContent = totalSongs > 0 ? Math.round((clearedSongs / totalSongs) * 100) + '%' : '0%';
-  document.getElementById('hardClearRate').textContent = totalSongs > 0 ? Math.round((hardClearedSongs / totalSongs) * 100) + '%' : '0%';
+  document.getElementById('clearRate').textContent = availableSongs > 0 ? Math.round((clearedSongs / availableSongs) * 100) + '%' : '0%';
+  document.getElementById('hardClearRate').textContent = availableSongs > 0 ? Math.round((hardClearedSongs / availableSongs) * 100) + '%' : '0%';
   
   console.log('=== updateStats 完了 ===');
 }
@@ -471,6 +727,7 @@ function updateChart() {
   
   // クリアタイプの色設定
   const clearColors = {
+    '-1': '#ffffff', // NO SONG - 白色
     0: '#f3f4f6', // NO PLAY - グレー
     1: '#99a1af', // FAILED - 暗いグレー
     2: '#ad46ff', // ASSIST EASY CLEAR - 紫
@@ -485,6 +742,7 @@ function updateChart() {
   };
   
   const clearLabels = {
+    '-1': 'NO SONG',
     0: 'NO PLAY',
     1: 'FAILED', 
     2: 'ASSIST EASY CLEAR',
@@ -546,13 +804,13 @@ function updateChart() {
     
     // クリアタイプ別の統計を計算
     const clearStats = {};
-    for (let clearType = 0; clearType <= 10; clearType++) {
+    for (let clearType = -1; clearType <= 10; clearType++) { // -1から10に拡張
       clearStats[clearType] = songs.filter(song => song.clear === clearType).length;
     }
     
     // 積み上げ横棒グラフの描画（高い順から低い順に）
     let currentX = margin.left;
-    for (let clearType = 10; clearType >= 0; clearType--) { // 10から0に逆順
+    for (let clearType = 10; clearType >= -1; clearType--) { // 10から-1に逆順
       const count = clearStats[clearType];
       if (count > 0 && totalSongs > 0) {
         const percentage = count / totalSongs;
@@ -620,7 +878,7 @@ function updateChart() {
 }
 
 // 楽曲テーブルを更新
-function updateSongTable() {
+async function updateSongTable() {
   const container = document.getElementById('tableContainer');
   
   // テーブルタイトルを更新
@@ -637,6 +895,31 @@ function updateSongTable() {
   
   // ソート処理
   const sortedSongs = getSortedSongs();
+  
+  // 全楽曲のURL生成を並列で実行
+  const songsWithUrls = await Promise.all(
+    sortedSongs.map(async (song) => {
+      const songUrl = await generateSongUrl(song, state.songLinkService);
+      
+      // 特定の楽曲のデバッグ情報を出力
+      if (song.title && song.title.includes('Distance Fields')) {
+        console.log('=== DEBUG: Distance Fields URL Generation ===');
+        console.log('Song data:', {
+          title: song.title,
+          md5: song.md5,
+          sha256: song.sha256,
+          originalMd5: song.originalMd5,
+          originalSha256: song.originalSha256,
+          clear: song.clear,
+          linkService: state.songLinkService
+        });
+        console.log('Generated URL:', songUrl);
+        console.log('=== END DEBUG ===');
+      }
+      
+      return { ...song, cachedUrl: songUrl };
+    })
+  );
   
   let tableHtml = `
     <table class="song-table">
@@ -669,18 +952,18 @@ function updateSongTable() {
       <tbody>
   `;
   
-  sortedSongs.forEach(song => {
+  for (const song of songsWithUrls) {
     // レベルフィルタリング
     if (!state.selectedLevels.has(song.level.toString())) {
-      return;
+      continue;
     }
 
     // 楽曲名検索フィルタリング
     if (state.songSearchText && !song.title.toLowerCase().includes(state.songSearchText)) {
-      return;
+      continue;
     }
 
-    const clearType = song.clear || 0;
+    const clearType = song.clear !== undefined ? song.clear : 0;
     const missCount = song.minbp !== null ? song.minbp : '-'; // 実際のミスカウントを表示、null/undefinedの場合は'-'
     const score = song.score || 0;
     const djLevel = song.djLevel || 'F';
@@ -692,12 +975,15 @@ function updateSongTable() {
     const levelSymbol = state.selectedTableData?.header?.symbol || null;
     const displayLevel = levelSymbol ? `${levelSymbol}${song.level}` : song.level.toString();
     
+    // 楽曲リンクURL（既に生成済み）
+    const songUrl = song.cachedUrl || null;
+    
     tableHtml += `
       <tr class="${clearClass}">
         <td class="level-cell">${escapeHtml(displayLevel)}</td>
         <td class="song-title">
-          ${song.url_diff ? 
-            `<a href="${escapeHtml(song.url_diff)}" target="_blank" rel="noopener noreferrer">${escapeHtml(song.title)}</a>` :
+          ${songUrl ? 
+            `<a href="#" data-url="${escapeHtml(songUrl)}" class="song-link">${escapeHtml(song.title)}</a>` :
             escapeHtml(song.title)
           }
         </td>
@@ -709,18 +995,22 @@ function updateSongTable() {
         <td class="lastplayed-cell">${lastPlayed}</td>
       </tr>
     `;
-  });
+  }
   
   tableHtml += '</tbody></table>';
   container.innerHTML = tableHtml;
   
   // ソート用のイベントリスナーを追加
   setupSortEventListeners();
+  
+  // 楽曲リンクのイベントリスナーを追加
+  setupSongLinkEventListeners();
 }
 
 // クリアタイプからCSSクラスを取得
 function getClearClass(clearType) {
   switch (clearType) {
+    case -1: return 'clear-nosong';
     case 0: return 'clear-noplay';
     case 1: return 'clear-failed';
     case 2: return 'clear-assist';
@@ -732,13 +1022,14 @@ function getClearClass(clearType) {
     case 8: return 'clear-fullcombo';
     case 9: return 'clear-perfect'; // PERFECT
     case 10: return 'clear-max'; // MAX
-    default: return 'clear-noplay';
+    default: return 'clear-nosong';
   }
 }
 
 // クリアタイプ名を取得
 function getClearTypeName(clearType) {
   const clearLabels = {
+    '-1': 'NO SONG',
     0: 'NO PLAY',
     1: 'FAILED', 
     2: 'ASSIST',
@@ -920,7 +1211,7 @@ function setupSortEventListeners() {
   
   sortableHeaders.forEach(header => {
     header.style.cursor = 'pointer';
-    header.addEventListener('click', function() {
+    header.addEventListener('click', async function() {
       const column = this.getAttribute('data-column');
       
       // 同じカラムをクリックした場合は方向を反転、異なるカラムの場合は昇順から開始
@@ -932,7 +1223,7 @@ function setupSortEventListeners() {
       }
       
       console.log(`Sort by ${column} (${state.sortDirection})`);
-      updateSongTable();
+      await updateSongTable();
     });
     
     // ツールチップの追加
@@ -940,8 +1231,38 @@ function setupSortEventListeners() {
   });
 }
 
+// 楽曲リンクのイベントリスナーを設定
+function setupSongLinkEventListeners() {
+  const songLinks = document.querySelectorAll('.song-link');
+  
+  songLinks.forEach(link => {
+    link.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const url = this.getAttribute('data-url');
+      
+      if (url) {
+        try {
+          const result = await window.api.openExternal(url);
+          if (!result.success) {
+            console.error('Failed to open URL:', result.error);
+            // フォールバックとして通常のリンクとして開く
+            window.open(url, '_blank');
+          }
+        } catch (error) {
+          console.error('Error opening external URL:', error);
+          // フォールバックとして通常のリンクとして開く
+          window.open(url, '_blank');
+        }
+      }
+    });
+    
+    // ホバー効果のため
+    link.style.cursor = 'pointer';
+  });
+}
+
 // レベルプルダウンメニューを作成
-function createLevelDropdown() {
+async function createLevelDropdown() {
   const selectElement = document.getElementById('levelSelect');
   if (!selectElement) return;
 
@@ -988,5 +1309,5 @@ function createLevelDropdown() {
   });
   
   // テーブルを更新（全て表示状態で）
-  updateSongTable();
+  await updateSongTable();
 }

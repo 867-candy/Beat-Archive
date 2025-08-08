@@ -16,5 +16,7 @@ contextBridge.exposeInMainWorld('api', {
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
   takeScreenshot: (directory, filename, bounds) => ipcRenderer.invoke('take-screenshot', directory, filename, bounds),
   splitImage: (imagePath, maxHeight, datePrefix) => ipcRenderer.invoke('split-image', imagePath, maxHeight, datePrefix),
-  takeScrollingScreenshot: (directory, datePrefix, maxSegmentHeight) => ipcRenderer.invoke('take-scrolling-screenshot', directory, datePrefix, maxSegmentHeight)
+  takeScrollingScreenshot: (directory, datePrefix, maxSegmentHeight) => ipcRenderer.invoke('take-scrolling-screenshot', directory, datePrefix, maxSegmentHeight),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  convertMd5ToSha256: (md5) => ipcRenderer.invoke('convert-md5-to-sha256', md5)
 });

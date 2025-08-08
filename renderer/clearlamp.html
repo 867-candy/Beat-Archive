@@ -266,6 +266,7 @@
     }
     
     /* クリアタイプ別カラー */
+    .clear-nosong { border-left-color: #d1d5db; background-color: #f3f4f6; }
     .clear-noplay { border-left-color: #f3f4f6; background-color: #f9fafb; }
     .clear-failed { border-left-color: #99a1af; background-color: #d0d0d0; }
     .clear-assist { border-left-color: #ff94db; background-color: #ff94db; }
@@ -277,6 +278,7 @@
     .clear-perfect { border-left-color: #85FAC0; background-color: #B5FFDA; }
     .clear-max { border-left-color: #F3E8FF; background-color: #F3E8FF; }
     
+    .clear-nosong:hover { background-color: #E5E7EB; }
     .clear-noplay:hover { background-color: #E8E8E8; }
     .clear-failed:hover { background-color: #7E7B7B; }
     .clear-assist:hover { background-color: #ad46ff; }
@@ -461,6 +463,10 @@
         <div class="legend-item">
           <div class="legend-color" style="background: #f3f4f6;"></div>
           <span>NO PLAY</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ffffff; border: 1px solid #ccc;"></div>
+          <span>NO SONG</span>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
@@ -2336,9 +2336,42 @@ ipcMain.handle('get-song-score', async (_, hash) => {
     scoreDB.close();
     songdataDB.close();
 
+    // 楽曲データがない場合はNO SONGを表現
+    if (!songData) {
+      console.log(`No song data found for hash: ${hash}`);
+      return {
+        sha256: hash.length === 64 ? hash : null,
+        score: 0,
+        clear: -1, // -1でNO SONGを表現
+        rank: '',
+        percentage: 0,
+        points: 0,
+        playcount: 0,
+        notes: null,
+        minbp: null,
+        djLevel: 'F',
+        beatorajaScore: 0,
+        lastPlayed: null
+      };
+    }
+
+    // 楽曲データはあるがスコアデータがない場合はNO PLAYを表現
     if (!scoreData) {
-      console.log(`No score data found for hash: ${hash}`);
-      return null;
+      console.log(`No score data found for hash: ${hash}, but song data exists`);
+      return {
+        sha256: songData.sha256,
+        score: 0,
+        clear: 0, // 0でNO PLAYを表現
+        rank: '',
+        percentage: 0,
+        points: 0,
+        playcount: 0,
+        notes: songData.notes,
+        minbp: null,
+        djLevel: 'F',
+        beatorajaScore: 0,
+        lastPlayed: null
+      };
     }
 
     // EXスコアとパーセンテージを計算
@@ -3093,5 +3126,59 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
+  }
+});
+
+// 外部ブラウザでURLを開く
+ipcMain.handle('open-external', async (_, url) => {
+  try {
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('Error opening external URL:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// MD5からSHA256に変換
+ipcMain.handle('convert-md5-to-sha256', async (_, md5) => {
+  console.log('Converting MD5 to SHA256:', md5);
+  
+  try {
+    const songdataPath = config.dbPaths?.songdata;
+    
+    if (!songdataPath || !fs.existsSync(songdataPath)) {
+      console.log('Songdata database not found');
+      return null;
+    }
+    
+    const db = new sqlite3.Database(songdataPath, sqlite3.OPEN_READONLY);
+    
+    return new Promise((resolve, reject) => {
+      db.get(
+        'SELECT sha256 FROM song WHERE md5 = ?',
+        [md5],
+        (err, row) => {
+          db.close();
+          
+          if (err) {
+            console.error('Error querying songdata database:', err);
+            reject(err);
+            return;
+          }
+          
+          if (row && row.sha256) {
+            console.log(`Converted MD5 ${md5} to SHA256 ${row.sha256}`);
+            resolve(row.sha256);
+          } else {
+            console.log(`No SHA256 found for MD5 ${md5}`);
+            resolve(null);
+          }
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error in convert-md5-to-sha256:', error);
+    return null;
   }
 });

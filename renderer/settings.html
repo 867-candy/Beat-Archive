@@ -141,6 +141,15 @@
       background: #f8d7da;
       color: #721c24;
     }
+    .link-preview {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+      font-family: monospace;
+      color: #6c757d;
+    }
     .save-btn {
       background: #27ae60;
       color: white;
@@ -462,6 +471,25 @@
       </div>
       
       <div class="status" id="tableStatus"></div>
+    </div>
+
+    <div class="setting-group">
+      <h3>🔗 楽曲情報リンク設定</h3>
+      <p>クリアランプ画面の楽曲名から外部サイトにリンクする設定を行います。</p>
+      
+      <div class="setting-item">
+        <label for="songLinkService">リンク先サービス:</label>
+        <select id="songLinkService">
+          <option value="">リンクなし</option>
+          <option value="lr2ir">LR2IR</option>
+          <option value="mochair">MochaIR</option>
+          <option value="bms-score-viewer">BMS Score Viewer</option>
+        </select>
+      </div>
+      
+      <div class="link-preview" id="linkPreview">
+        <small>プレビュー: リンクサービスを選択してください</small>
+      </div>
     </div>
 
     <div class="setting-group">

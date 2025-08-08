@@ -7,7 +7,8 @@ const state = {
     songdata: ''
   },
   difficultyTables: [],
-  defaultTableUrls: [] // 変更: 複数の難易度表URLを格納する配列
+  defaultTableUrls: [], // 変更: 複数の難易度表URLを格納する配列
+  songLinkService: '' // 楽曲情報リンクサービス設定
 };
 
 // 設定を読み込み
@@ -16,6 +17,7 @@ async function loadSettings() {
     const config = await window.api.getConfig();
     Object.assign(state.dbPaths, config.dbPaths);
     state.difficultyTables = config.difficultyTables || [];
+    state.songLinkService = config.songLinkService || '';
     
     // 旧設定形式との互換性を保つ
     if (config.defaultTableUrl && !config.defaultTableUrls) {
@@ -30,6 +32,8 @@ async function loadSettings() {
     
     updatePathDisplays();
     updateTableList();
+    updateLinkServiceDisplay();
+    setupEventListeners();
   } catch (error) {
     showStatus('設定の読み込みに失敗しました: ' + error.message, 'error');
   }
@@ -810,6 +814,52 @@ function setupEventListeners() {
   
   // フラグを設定してイベントリスナーの重複登録を防ぐ
   document.body._settingsListenersAdded = true;
+}
+
+// 楽曲情報リンクサービス表示を更新
+function updateLinkServiceDisplay() {
+  const songLinkService = document.getElementById('songLinkService');
+  if (songLinkService) {
+    songLinkService.value = state.songLinkService;
+    updateLinkPreview();
+    
+    // イベントリスナーを追加
+    songLinkService.addEventListener('change', () => {
+      updateLinkPreview();
+      saveLinkServiceSetting();
+    });
+  }
+}
+
+// リンクプレビューを更新
+function updateLinkPreview() {
+  const service = document.getElementById('songLinkService').value;
+  const previewElement = document.getElementById('linkPreview');
+  
+  const serviceInfo = {
+    '': 'リンクサービスを選択してください',
+    'lr2ir': 'LR2IR: http://www.dream-pro.info/~lavalse/LR2IR/search.cgi?mode=ranking&bmsmd5={md5}',
+    'mochair': 'MochaIR: http://mocha-repository.info/song.php?sha256={sha256}',
+    'bms-score-viewer': 'BMS Score Viewer: https://bms-score-viewer.pages.dev/view?md5={md5}'
+  };
+  
+  previewElement.innerHTML = `<small>プレビュー: ${serviceInfo[service] || 'Unknown service'}</small>`;
+}
+
+// 楽曲情報リンクサービス設定を保存
+async function saveLinkServiceSetting() {
+  try {
+    const service = document.getElementById('songLinkService').value;
+    state.songLinkService = service;
+    
+    const config = await window.api.getConfig();
+    config.songLinkService = service;
+    
+    await window.api.updateConfig(config);
+    showStatus('楽曲情報リンク設定を保存しました', 'success');
+  } catch (error) {
+    showStatus('楽曲情報リンク設定の保存に失敗しました: ' + error.message, 'error');
+  }
 }
 
 // DOM読み込み完了後に初期化
