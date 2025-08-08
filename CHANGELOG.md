@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+# [1.1.8] - 2025-08-08
+
+### Added
+- 更新曲をXに投稿する機能の追加
+- 楽曲別クリア状況からMochaIR/LR2IR/BMSScoreViewerに飛べる機能を追加 
+
+### Changed
+- NO SONGとNO PLAYを区別するように変更
+- クリアランプ読み込み時に楽曲別クリア状況を難易度でソートするように変更 (難易度表の並びとはズレる可能性があるが仕様)
+
+### Fixed
+
+
 ## [1.1.7] - 2025-08-08
 
 ### Added
