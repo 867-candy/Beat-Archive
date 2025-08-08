@@ -227,7 +227,8 @@ function createConfigObject() {
   return {
     dbPaths: state.dbPaths,
     difficultyTables: state.difficultyTables,
-    defaultTableUrls: state.defaultTableUrls
+    defaultTableUrls: state.defaultTableUrls,
+    songLinkService: state.songLinkService
   };
 }
 
@@ -701,6 +702,19 @@ function showTableStatus(message, type = 'success') {
   }, 3000);
 }
 
+// 楽曲リンク設定ステータス表示
+function showLinkStatus(message, type = 'success') {
+  const statusEl = document.getElementById('linkStatus');
+  statusEl.textContent = message;
+  statusEl.className = `status ${type}`;
+  statusEl.style.display = 'block';
+  
+  // 3秒後に自動的に非表示
+  setTimeout(() => {
+    statusEl.style.display = 'none';
+  }, 3000);
+}
+
 // イベントリスナー設定（一度だけ実行）
 function setupEventListeners() {
   // 既にイベントリスナーが設定されている場合はスキップ
@@ -715,7 +729,15 @@ function setupEventListeners() {
       if (folderPath) {
         state.dbPaths.playerDbFolder = folderPath;
         updatePathDisplays();
-        showStatus('プレイヤーDBフォルダを設定しました', 'success');
+        
+        // 設定を自動保存
+        try {
+          const newConfig = createConfigObject();
+          await window.api.updateConfig(newConfig);
+          showStatus('プレイヤーDBフォルダを設定し、自動保存しました', 'success');
+        } catch (saveError) {
+          showStatus('フォルダは設定されましたが、保存に失敗しました: ' + saveError.message, 'error');
+        }
       }
     } catch (error) {
       showStatus('フォルダ選択に失敗しました: ' + error.message, 'error');
@@ -728,22 +750,21 @@ function setupEventListeners() {
       if (path) {
         state.dbPaths.songdata = path;
         updatePathDisplays();
+        
+        // 設定を自動保存
+        try {
+          const newConfig = createConfigObject();
+          await window.api.updateConfig(newConfig);
+          showStatus('songdata.dbを設定し、自動保存しました', 'success');
+        } catch (saveError) {
+          showStatus('ファイルは設定されましたが、保存に失敗しました: ' + saveError.message, 'error');
+        }
       }
     } catch (error) {
       showStatus('ファイル選択に失敗しました: ' + error.message, 'error');
     }
   });
 
-  // 設定保存ボタン
-  document.getElementById('saveConfig').addEventListener('click', async () => {
-    try {
-      const newConfig = createConfigObject();
-      await window.api.updateConfig(newConfig);
-      showStatus('設定を保存しました', 'success');
-    } catch (error) {
-      showStatus('設定の保存に失敗しました: ' + error.message, 'error');
-    }
-  });
   
   // 難易度表追加ボタン
   const addBtn = document.getElementById('addTableBtn');
@@ -856,9 +877,9 @@ async function saveLinkServiceSetting() {
     config.songLinkService = service;
     
     await window.api.updateConfig(config);
-    showStatus('楽曲情報リンク設定を保存しました', 'success');
+    showLinkStatus('楽曲情報リンク設定を保存しました', 'success');
   } catch (error) {
-    showStatus('楽曲情報リンク設定の保存に失敗しました: ' + error.message, 'error');
+    showLinkStatus('楽曲情報リンク設定の保存に失敗しました: ' + error.message, 'error');
   }
 }
 
