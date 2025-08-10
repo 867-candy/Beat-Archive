@@ -5,7 +5,7 @@ const state = {
   songs: [],
   selectedLevels: new Set(), // 選択されたレベルのセット
   songSearchText: '', // 楽曲名検索テキスト
-  sortColumn: 'level', // ソート対象のカラム (none, level, title, clear, misscount, score, djlevel, scorerate, lastplayed)
+  sortColumn: 'none', // ソート対象のカラム (none, level, title, clear, misscount, score, djlevel, scorerate, lastplayed)
   sortDirection: 'asc', // ソート方向 ('asc' または 'desc')
   songLinkService: 'none' // 楽曲リンクサービス設定
 };
@@ -193,10 +193,6 @@ async function handleTableChange(event) {
   
   state.selectedTableIndex = selectedIndex;
   const selectedTable = state.difficultyTables[selectedIndex];
-  
-  // ソートを難易度でリセット
-  state.sortColumn = 'level';
-  state.sortDirection = 'asc';
   
   console.log('=== 難易度表選択変更 ===');
   console.log('選択された表:', selectedTable);
@@ -1077,10 +1073,6 @@ function resetDisplay() {
   
   document.getElementById('chartContainer').innerHTML = '<div class="chart-placeholder">難易度表を選択してください</div>';
   document.getElementById('tableContainer').innerHTML = '<div class="loading">難易度表を選択してください</div>';
-  
-  // ソートをリセット（難易度ソートに初期化）
-  state.sortColumn = 'level';
-  state.sortDirection = 'asc';
   
   // レベルフィルタもリセット
   const levelSelect = document.getElementById('levelSelect');

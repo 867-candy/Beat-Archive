@@ -1570,6 +1570,20 @@ function createWindow() {
   win.loadFile('renderer/index.html');
 }
 
+function createSmartViewWindow() {
+  const smartViewWin = new BrowserWindow({
+    width: 600,
+    height: 900,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js')
+    },
+    title: 'Smart View - Beat Archive'
+  });
+
+  smartViewWin.loadFile('renderer/smartview.html');
+}
+
 // 楽曲のタイトルとサブタイトルを結合して表示用タイトルを生成
 function formatSongTitle(song) {
   if (!song || !song.title || song.title.trim() === '') {
@@ -1742,7 +1756,7 @@ ipcMain.handle('get-updated-songs', async (_, dateString) => {
       // 楽曲情報を取得（統計用・全プレイログから取得）
       const songForStats = await new Promise((resolve, reject) => {
         songdataDB.get(
-          `SELECT title, subtitle, artist, md5, sha256, notes FROM ${songdataTableName} WHERE sha256 = ?`,
+          `SELECT title, subtitle, artist, md5, sha256, notes, level FROM ${songdataTableName} WHERE sha256 = ?`,
           [row.sha256],
           (err, data) => err ? reject(err) : resolve(data)
         );
@@ -1815,7 +1829,7 @@ ipcMain.handle('get-updated-songs', async (_, dateString) => {
       // 楽曲情報を取得（読み取り専用）- 表示用
       const song = await new Promise((resolve, reject) => {
         songdataDB.get(
-          `SELECT title, subtitle, artist, md5, sha256, notes FROM ${songdataTableName} WHERE sha256 = ?`,
+          `SELECT title, subtitle, artist, md5, sha256, notes, level FROM ${songdataTableName} WHERE sha256 = ?`,
           [row.sha256],
           (err, data) => err ? reject(err) : resolve(data)
         );
@@ -1923,6 +1937,7 @@ ipcMain.handle('get-updated-songs', async (_, dateString) => {
           ...song,
           title: song.title,  // 生のタイトルを使用（renderer.jsで結合）
           subtitle: song.subtitle,  // サブタイトルも明示的に含める
+          songLevel: song.level,  // songdata.dbのlevelをsongLevelとして追加
           score: currentScore,
           minbp: currentMinbp,
           clear: currentClear,
@@ -3244,6 +3259,43 @@ ipcMain.handle('copy-image-to-clipboard', async (_, imagePath) => {
   } catch (error) {
     console.error('Error copying image to clipboard:', error);
     return { success: false, error: error.message };
+  }
+});
+
+// スマートビューウィンドウを開く機能
+ipcMain.handle('smart-view-window', () => {
+  createSmartViewWindow();
+});
+
+// Smart View統計情報の保存機能
+ipcMain.handle('save-smart-view-stats', async (_, stats) => {
+  try {
+    const statsPath = path.join(__dirname, 'smartview-stats.json');
+    fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
+    console.log('Smart View統計情報を保存しました:', statsPath);
+    return true;
+  } catch (error) {
+    console.error('Smart View統計情報の保存に失敗しました:', error);
+    return false;
+  }
+});
+
+// Smart View統計情報の読み込み機能
+ipcMain.handle('load-smart-view-stats', async () => {
+  try {
+    const statsPath = path.join(__dirname, 'smartview-stats.json');
+    if (fs.existsSync(statsPath)) {
+      const statsData = fs.readFileSync(statsPath, 'utf8');
+      const stats = JSON.parse(statsData);
+      console.log('Smart View統計情報を読み込みました');
+      return stats;
+    } else {
+      console.log('Smart View統計情報ファイルが見つかりません');
+      return null;
+    }
+  } catch (error) {
+    console.error('Smart View統計情報の読み込みに失敗しました:', error);
+    return null;
   }
 });
 

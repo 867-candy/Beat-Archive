@@ -24,5 +24,8 @@ contextBridge.exposeInMainWorld('api', {
   openTwitterPost: (text) => ipcRenderer.invoke('open-twitter-post', text),
   getLastScreenshotPath: () => ipcRenderer.invoke('get-last-screenshot-path'),
   updateLastScreenshotPath: (imagePath, directory) => ipcRenderer.invoke('update-last-screenshot-path', imagePath, directory),
-  openDirectory: (directoryPath) => ipcRenderer.invoke('open-directory', directoryPath)
+  openDirectory: (directoryPath) => ipcRenderer.invoke('open-directory', directoryPath),
+  smartViewWindow: () => ipcRenderer.invoke('smart-view-window'),
+  saveSmartViewStats: (stats) => ipcRenderer.invoke('save-smart-view-stats', stats),
+  loadSmartViewStats: () => ipcRenderer.invoke('load-smart-view-stats')
 });

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart View - Beat Archive</title>
+  <link rel="stylesheet" href="smartview.css">
+</head>
+<body>
+  <div class="sticky py-1 top-0 z-10 bg-background flex flex-col gap-1 shadow-md shadow-gray-900">
+    <!-- 上部情報表示 -->
+    <div class="bg-muted text-muted-foreground rounded-lg w-full max-w-200 mx-auto p-0 flex items-center justify-between">
+      <div class="flex-1 px-3 py-2">
+        <div class="text-left">
+          <div class="text-lg font-medium mb-1" id="updateDate">2025/08/10 の更新</div>
+          <div class="text-xl font-bold">総ノーツ数: <span id="totalNotes">0</span></div>
+        </div>
+      </div>
+      <div class="px-3">
+        <button id="shareBtn" class="share-button">
+          <svg width="50" height="50" viewBox="0 0 512 512" fill="currentColor" class="share-icon">
+            <path d="M409.6,0.746c-56.553,0-102.4,45.842-102.4,102.395c0,56.553,45.847,102.405,102.4,102.405 c56.553,0,102.4-45.852,102.4-102.405C512,46.588,466.153,0.746,409.6,0.746z"/>
+            <path d="M175.116,264.684l141.198-76.931c-12.072-13.295-21.444-29.102-26.988-46.627l-137.398,83.006 c-16.107-16.075-38.332-26.01-62.878-26.01C39.869,198.122,0,237.981,0,287.166c0,49.176,39.869,89.035,89.048,89.035 c49.171,0,89.04-39.859,89.04-89.035C178.088,279.383,176.99,271.886,175.116,264.684z"/>
+            <path d="M356.178,359.886c-21.661,0-41.143,9.15-54.938,23.729l-105.064-61.372 c-4.534,13.803-11.629,26.443-20.77,37.339l107.635,56.783c-1.611,6.149-2.553,12.558-2.553,19.205 c0,41.798,33.885,75.684,75.689,75.684c41.798,0,75.683-33.886,75.683-75.684S397.976,359.886,356.178,359.886z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    
+    <!-- フィルター -->
+    <div class="flex items-center justify-between w-full max-w-100 mx-auto pr-3 flex-wrap gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
+        <select id="filterSelect" class="select-trigger">
+          <option value="all">すべて</option>
+          <option value="clear-type">クリアタイプ</option>
+          <option value="score-rate">スコアレート</option>
+          <option value="miss-count">ミスカウント</option>
+          <option value="level">レベル</option>
+        </select>
+      </div>
+      <div class="text-sm text-muted-foreground songCount">
+        <span id="songCount">0</span>件
+      </div>
+    </div>
+  </div>
+
+  <!-- 楽曲リスト -->
+  <div id="songList" class="gap-[1px] max-w-100">
+    <!-- 楽曲アイテムがここに追加されます -->
+  </div>
+
+  <!-- ページネーション -->
+  <div id="pagination" class="flex items-center justify-center gap-2 py-2 mt-4 max-w-100 mx-auto" style="display: none;">
+    <button id="prevPageBtn" class="px-3 py-1 bg-card border border-input rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed">前へ</button>
+    <span id="pageInfo" class="text-sm text-muted-foreground px-2">1 / 1</span>
+    <button id="nextPageBtn" class="px-3 py-1 bg-card border border-input rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed">次へ</button>
+  </div>
+
+  <script src="smartview.js"></script>
+</body>
+</html>

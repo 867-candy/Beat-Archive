@@ -9,6 +9,7 @@ const state = {
 // クリアタイプに応じた色を取得する関数
 function getClearTypeColor(clearTypeName) {
   const colorMap = {
+    'NO PLAY': '#CCCCCC',
     'FAILED': '#CCCCCC',
     'ASSIST EASY CLEAR': '#FF66CC',
     'LIGHT ASSIST CLEAR': '#FF66CC',
@@ -29,12 +30,15 @@ function formatSongTitle(song) {
   if (!song.title || song.title.trim() === '') {
     return '[Unknown Song]';
   }
-  
+  let title = song.title;
   if (song.subtitle && song.subtitle.trim() !== '') {
-    return `${song.title} ${song.subtitle}`;
+    title += ` ${song.subtitle}`;
   }
-  
-  return song.title;
+  // 60文字で打ち切り
+  if (title.length > 60) {
+    title = title.substring(0, 60) + '...';
+  }
+  return title;
 }
 
 async function init() {
@@ -46,6 +50,18 @@ async function init() {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('dateInput').value = today;
   console.log(`[デバッグ] 初期化完了 - 日付設定: ${today}`);
+  
+  // スマートビューボタンのイベントリスナーを設定
+  const smartviewBtn = document.getElementById('smartviewBtn');
+  if (smartviewBtn) {
+    smartviewBtn.addEventListener('click', async () => {
+      try {
+        await window.api.smartViewWindow();
+      } catch (error) {
+        console.error('Error opening smart view:', error);
+      }
+    });
+  }
 }
 
 document.getElementById('loadBtn').addEventListener('click', async () => {
@@ -332,6 +348,24 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
     const displayedSongsCount = data.length; // 実際に表示されている楽曲数
     const hiddenSongsCount = stats ? stats.hiddenSongs : 0;
     const unknownSongsCount = stats ? stats.unknownSongs : 0;
+    
+    // Smart View用の統計情報を保存
+    const smartViewStats = {
+      selectedDate: date, // 選択された日付を追加
+      totalNotesPlayed: totalNotesPlayed,
+      displayTotalNotes: displayTotalNotes,
+      displayedSongsCount: displayedSongsCount,
+      hiddenSongsCount: hiddenSongsCount,
+      unknownSongsCount: unknownSongsCount,
+      djLevelCounts: djLevelCounts,
+      clearLampCounts: clearLampCounts,
+      totalMissCount: totalMissCount,
+      lastUpdated: new Date().toISOString(),
+      songData: data // 楽曲データも含める
+    };
+    
+    // ファイルに保存（Smart View用）
+    window.api.saveSmartViewStats(smartViewStats);
     
     // デバッグ用ログ
     console.log('統計計算結果:', {

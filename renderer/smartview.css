@@ -1,0 +1,507 @@
+@import url('./index.css');
+
+body {
+  background-color: oklch(100% 0 0);
+  color: oklch(14.5% 0 0);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.sticky {
+  position: sticky;
+}
+
+.top-0 {
+  top: 0;
+}
+
+.z-10 {
+  z-index: 10;
+}
+
+.bg-background {
+  background-color: oklch(100% 0 0);
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.gap-1 {
+  gap: 4px;
+}
+
+.gap-2 {
+  gap: 8px;
+}
+
+.py-1 {
+  padding-block: 4px;
+}
+
+.py-2 {
+  padding-block: 8px;
+}
+
+.px-3 {
+  padding-inline: 12px;
+}
+
+.shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.shadow-gray-900 {
+  --tw-shadow-color: oklch(21% 0.034 264.665);
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.rounded-lg {
+  border-radius: 10px;
+}
+
+.grid {
+  display: grid;
+}
+
+.grid-cols-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.h-auto {
+  height: auto;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.max-w-200 {
+  max-width: 800px;
+}
+
+.max-w-100 {
+  max-width: 100%; /* 600px幅に合わせて調整（余白を考慮） */
+}
+
+.max-w-600 {
+  max-width: 100%; /* Smart View用の最適化された幅 */
+}
+
+.mx-auto {
+  margin-inline: auto;
+}
+
+.p-0 {
+  padding: 0;
+}
+
+.col-span-6 {
+  grid-column: span 6 / span 6;
+}
+
+.pt-1 {
+  padding-top: 4px;
+}
+
+.pb-0 {
+  padding-bottom: 0;
+}
+
+.inline-flex {
+  display: inline-flex;
+}
+
+.h-calc {
+  height: calc(100% - 1px);
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.rounded-md {
+  border-radius: 8px;
+}
+
+.border {
+  border: 1px solid;
+}
+
+.border-transparent {
+  border-color: transparent;
+}
+
+.text-sm {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.text-lg {
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.whitespace-nowrap {
+  white-space: nowrap;
+}
+
+.transition-colors {
+  transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 0.15s;
+}
+
+.focus-visible\:ring-3:focus-visible {
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.focus-visible\:outline-1:focus-visible {
+  outline-style: solid;
+  outline-width: 1px;
+}
+
+.disabled\:pointer-events-none:disabled {
+  pointer-events: none;
+}
+
+.disabled\:opacity-50:disabled {
+  opacity: 0.5;
+}
+
+.data-\[state\=active\]\:bg-background[data-state=active] {
+  background-color: var(--background);
+}
+
+.data-\[state\=active\]\:text-foreground[data-state=active] {
+  color: var(--foreground);
+}
+
+.data-\[state\=active\]\:shadow-sm[data-state=active] {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.mr-2 {
+  margin-right: 8px;
+}
+
+.text-xs {
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.text-base {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.bg-muted {
+  background-color: oklch(97% 0 0);
+}
+
+.songCount {
+  color: oklch(55.6% 0 0);
+  padding-right: 12px;
+}
+
+.border-input {
+  border-color: oklch(92.2% 0 0);
+}
+
+.bg-transparent {
+  background-color: transparent;
+}
+
+.shadow-xs {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.outline-none {
+  outline-style: none;
+}
+
+.data-\[size\=default\]\:h-9[data-size=default] {
+  height: 36px;
+}
+
+.w-\[130px\] {
+  width: 130px;
+}
+
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.bg-card {
+  background-color: oklch(100% 0 0);
+}
+
+.text-card-foreground {
+  color: oklch(14.5% 0 0);
+}
+
+.shadow-sm {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.hover\:shadow-md:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.transition-shadow {
+  transition-property: box-shadow;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 0.15s;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.border-b {
+  border-bottom: 1px solid;
+}
+
+.items-start {
+  align-items: flex-start;
+}
+
+.mx-0\.5 {
+  margin-inline: 2px;
+}
+
+.ml-1 {
+  margin-left: 4px;
+}
+
+/* クリアランプの色 */
+.clear-lamp-failed { color: #CCCCCC; }
+.clear-lamp-assist { color: #FF66CC; }
+.clear-lamp-easy { color: #99FF99; }
+.clear-lamp-clear { color: #99CCFF; }
+.clear-lamp-hard { color: #FF6666; }
+.clear-lamp-ex-hard { color: #FFFF99; }
+.clear-lamp-full-combo { color: #66E7F8; }
+.clear-lamp-perfect { color: #85FAC0; }
+.clear-lamp-max { color: #F3E8FF; }
+
+/* セレクトボックス */
+.select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: 8px;
+  border: 1px solid oklch(92.2% 0 0);
+  background-color: transparent;
+  padding-inline: 12px;
+  padding-block: 8px;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: color, box-shadow;
+  transition-duration: 0.15s;
+  outline: none;
+  height: 36px;
+  width: 130px;
+  font-size: 12px;
+}
+
+.select-trigger:focus-visible {
+  box-shadow: 0 0 0 3px oklch(70.8% 0 0);
+  outline: 1px solid oklch(70.8% 0 0);
+}
+
+.chevron-down {
+  width: 16px;
+  height: 16px;
+  opacity: 0.5;
+}
+
+.song-item {
+  padding: 0;
+  border-bottom: 1px solid oklch(92.2% 0 0);
+  background-color: oklch(100% 0 0);
+  color: oklch(14.5% 0 0);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+  cursor: pointer;
+  display: flex;
+}
+
+.song-item:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.clear-type-indicator {
+  width: 10px;
+  min-width: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.clear-type-previous {
+  height: 50%;
+  width: 100%;
+}
+
+.clear-type-current {
+  height: 50%;
+  width: 100%;
+}
+
+.song-content {
+  flex: 1;
+  padding-inline: 12px;
+  padding-block: 4px;
+}
+
+/* 統計情報ボタンのテキスト色 */
+.inline-flex.h-calc.flex-1.items-center.justify-center {
+  color: oklch(14.5% 0 0);
+}
+
+.inline-flex.h-calc.flex-1.items-center.justify-center span {
+  color: oklch(14.5% 0 0);
+}
+
+.inline-flex.h-calc.flex-1.items-center.justify-center .font-bold {
+  color: oklch(14.5% 0 0);
+}
+
+/* フィルター部分とカウント部分のテキスト色 */
+.flex.items-center.justify-between.w-full.max-w-100 {
+  color: oklch(14.5% 0 0);
+}
+
+.flex.items-center.justify-between.w-full.max-w-100 .text-muted-foreground {
+  color: oklch(14.5% 0 0);
+}
+
+.flex.items-center.justify-between.w-full.max-w-100 select {
+  color: oklch(14.5% 0 0);
+}
+
+/* ページネーション */
+#pagination {
+  margin-bottom: 10px;
+  margin-top: 10px;
+  padding-bottom: 10px;
+}
+
+#pagination button {
+  background-color: oklch(100% 0 0);
+  color: oklch(14.5% 0 0);
+  border: 1px solid oklch(92.2% 0 0);
+  cursor: pointer;
+  transition: background-color 0.15s, box-shadow 0.15s;
+}
+
+#pagination button:hover:not(:disabled) {
+  background-color: oklch(97% 0 0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+#pageInfo {
+  color: oklch(14.5% 0 0);
+  font-weight: 500;
+}
+
+/* メインコンテンツエリア */
+#songList {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* 上部情報表示のテキスト色とサイズ調整 */
+.bg-muted .text-lg {
+  font-size: 18px;
+  color: oklch(14.5% 0 0);
+}
+
+.bg-muted .text-xl {
+  font-size: 20px;
+  color: oklch(14.5% 0 0);
+}
+
+/* シェアボタン */
+.share-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: oklch(14.5% 0 0);
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.share-button:hover {
+  opacity: 0.7;
+  transform: scale(1.05);
+}
+
+.share-icon {
+  width: 50px;
+  height: 50px;
+}
+
+/* 更新差分のスタイル */
+.score-diff {
+  color: #DC143C;
+  font-weight: 500;
+}
+
+.miss-diff {
+  color: #DC143C;
+  font-weight: 500;
+}
+
+/* 楽曲リストの1段目フォントサイズ調整 */
+.song-item .song-content > div:first-child {
+  font-size: 16.8px; /* 14px (text-sm) の1.2倍 */
+}
+
+.song-item .song-content > div:first-child span {
+  font-size: 16.8px; /* 統一 */
+}
