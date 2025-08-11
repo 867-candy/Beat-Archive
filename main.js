@@ -3568,3 +3568,135 @@ ipcMain.handle('open-directory', async (event, directoryPath) => {
     };
   }
 });
+
+// ローカル保存機能（無効化）
+/*
+// 難易度表のローカル保存
+ipcMain.handle('save-difficulty-table-local', async (_, tableUrl, tableData) => {
+  try {
+    const crypto = require('crypto');
+    const hash = crypto.createHash('md5').update(tableUrl).digest('hex');
+    const cacheDir = path.join(app.getPath('userData'), 'difficulty-tables-cache');
+    
+    // キャッシュディレクトリを作成
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+    
+    // headerとbodyを分けて保存
+    const headerFileName = `header_${hash}.json`;
+    const bodyFileName = `body_${hash}.json`;
+    const headerPath = path.join(cacheDir, headerFileName);
+    const bodyPath = path.join(cacheDir, bodyFileName);
+    
+    // headerデータを保存
+    const headerCacheData = {
+      url: tableUrl,
+      type: 'header',
+      data: tableData.header,
+      savedAt: new Date().toISOString(),
+      version: '1.0'
+    };
+    
+    // bodyデータを保存
+    const bodyCacheData = {
+      url: tableUrl,
+      type: 'body',
+      data: tableData.body,
+      savedAt: new Date().toISOString(),
+      version: '1.0'
+    };
+    
+    fs.writeFileSync(headerPath, JSON.stringify(headerCacheData, null, 2), 'utf8');
+    fs.writeFileSync(bodyPath, JSON.stringify(bodyCacheData, null, 2), 'utf8');
+    
+    console.log(`[main.js] 難易度表をローカル保存しました: ${headerFileName}, ${bodyFileName}`);
+    
+    return { success: true, headerPath: headerPath, bodyPath: bodyPath };
+  } catch (error) {
+    console.error('[main.js] 難易度表ローカル保存エラー:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// ローカル保存された難易度表の読み込み
+ipcMain.handle('load-difficulty-table-local', async (_, tableUrl) => {
+  try {
+    const crypto = require('crypto');
+    const hash = crypto.createHash('md5').update(tableUrl).digest('hex');
+    const cacheDir = path.join(app.getPath('userData'), 'difficulty-tables-cache');
+    
+    const headerFileName = `header_${hash}.json`;
+    const bodyFileName = `body_${hash}.json`;
+    const headerPath = path.join(cacheDir, headerFileName);
+    const bodyPath = path.join(cacheDir, bodyFileName);
+    
+    // 両方のファイルが存在するかチェック
+    if (!fs.existsSync(headerPath) || !fs.existsSync(bodyPath)) {
+      return { success: false, error: 'キャッシュファイルが見つかりません' };
+    }
+    
+    // headerとbodyを読み込み
+    const headerContent = fs.readFileSync(headerPath, 'utf8');
+    const bodyContent = fs.readFileSync(bodyPath, 'utf8');
+    const headerCache = JSON.parse(headerContent);
+    const bodyCache = JSON.parse(bodyContent);
+    
+    console.log(`[main.js] ローカル保存された難易度表を読み込みました: ${headerFileName}, ${bodyFileName}`);
+    
+    return { 
+      success: true, 
+      data: {
+        header: headerCache.data,
+        body: bodyCache.data
+      },
+      savedAt: headerCache.savedAt 
+    };
+  } catch (error) {
+    console.error('[main.js] ローカル難易度表読み込みエラー:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 難易度表がキャッシュされているかチェック
+ipcMain.handle('is-difficulty-table-cached', async (_, tableUrl) => {
+  try {
+    const crypto = require('crypto');
+    const hash = crypto.createHash('md5').update(tableUrl).digest('hex');
+    const cacheDir = path.join(app.getPath('userData'), 'difficulty-tables-cache');
+    
+    const headerFileName = `header_${hash}.json`;
+    const bodyFileName = `body_${hash}.json`;
+    const headerPath = path.join(cacheDir, headerFileName);
+    const bodyPath = path.join(cacheDir, bodyFileName);
+    
+    const headerExists = fs.existsSync(headerPath);
+    const bodyExists = fs.existsSync(bodyPath);
+    const exists = headerExists && bodyExists;
+    
+    let savedAt = null;
+    
+    if (exists) {
+      try {
+        const headerContent = fs.readFileSync(headerPath, 'utf8');
+        const headerCache = JSON.parse(headerContent);
+        savedAt = headerCache.savedAt;
+      } catch (parseError) {
+        console.error('[main.js] キャッシュファイル解析エラー:', parseError);
+      }
+    }
+    
+    console.log(`[main.js] 難易度表キャッシュ確認: ${tableUrl} -> exists: ${exists}, savedAt: ${savedAt}`);
+    
+    return { 
+      exists: exists,
+      savedAt: savedAt,
+      headerExists: headerExists,
+      bodyExists: bodyExists
+    };
+  } catch (error) {
+    console.error('[main.js] 難易度表キャッシュ確認エラー:', error);
+    return { exists: false, error: error.message };
+  }
+});
+*/

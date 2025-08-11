@@ -509,3 +509,84 @@ body {
 .song-item .song-content > div:first-child span {
   font-size: 16.8px; /* 統一 */
 }
+
+/* ソート切り替えボタンのスタイル */
+#sortOrderBtn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  background: oklch(98% 0 0);
+  border: 1px solid oklch(89.8% 0 0);
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+#sortOrderBtn:hover {
+  background: oklch(96% 0 0);
+  border-color: oklch(83.1% 0 0);
+}
+
+#sortOrderBtn::before, #sortOrderBtn::after {
+  content: "";
+  height: 6px;
+  width: 6px;
+  position: absolute;
+  border-top: 2px oklch(52.1% 0 0) solid;
+  border-right: 2px oklch(52.1% 0 0) solid;
+  left: 50%;
+  transform-origin: center;
+}
+
+#sortOrderBtn::before {
+  top: 8px;
+  transform: translateX(-50%) rotate(-45deg);
+}
+
+#sortOrderBtn::after {
+  top: 18px;
+  transform: translateX(-50%) rotate(135deg);
+}
+
+/* 昇順時のスタイル */
+#sortOrderBtn.asc::before {
+  border-color: oklch(14.5% 0 0);
+}
+
+#sortOrderBtn.asc::after {
+  border-color: oklch(70% 0 0);
+}
+
+/* 降順時のスタイル */
+#sortOrderBtn.desc::before {
+  border-color: oklch(70% 0 0);
+}
+
+#sortOrderBtn.desc::after {
+  border-color: oklch(14.5% 0 0);
+}
+
+/* 無効状態のスタイル（デフォルトソート時） */
+#sortOrderBtn.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+#sortOrderBtn.disabled::before,
+#sortOrderBtn.disabled::after {
+  border-color: oklch(70% 0 0) !important;
+}
+
+#sortOrderBtn.disabled:hover {
+  background: oklch(98% 0 0);
+  border-color: oklch(89.8% 0 0);
+}
+
+/* SVGアイコンを非表示にする */
+#sortOrderBtn svg {
+  display: none;
+}

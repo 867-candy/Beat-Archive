@@ -5,6 +5,10 @@ let currentPage = 1;
 const itemsPerPage = 10;
 let filteredSongs = [];
 
+// ソート関連変数
+let currentSortBy = 'default';
+let currentSortOrder = 'asc'; // 'asc' または 'desc'
+
 // renderer.jsと同じクリアタイプから色を取得する関数（統一された色定義）
 function getRendererClearTypeColor(clearTypeName) {
   const colorMap = {
@@ -356,6 +360,63 @@ function formatDate(dateString) {
   return date.toLocaleDateString('ja-JP').replace(/\//g, '/');
 }
 
+// ソート関数
+function applySortToSongs(songs, sortBy, sortOrder) {
+  const sortedSongs = [...songs];
+  
+  if (sortBy === 'default') {
+    // デフォルトの場合は常に元の順序を保持（昇順降順の切り替えなし）
+    return sortedSongs;
+  }
+  
+  sortedSongs.sort((a, b) => {
+    let valueA, valueB;
+    
+    switch (sortBy) {
+      case 'title':
+        valueA = a.title || '';
+        valueB = b.title || '';
+        break;
+      case 'clear-type':
+        valueA = a.clear || 0;
+        valueB = b.clear || 0;
+        break;
+      case 'score-rate':
+        valueA = a.score || 0; // beatorajaScoreを直接参照
+        valueB = b.score || 0;
+        break;
+      case 'miss-count':
+        valueA = a.minbp !== null ? a.minbp : 999999; // null の場合は最大値
+        valueB = b.minbp !== null ? b.minbp : 999999;
+        break;
+      default:
+        return 0;
+    }
+    
+    let comparison = 0;
+    if (valueA < valueB) {
+      comparison = -1;
+    } else if (valueA > valueB) {
+      comparison = 1;
+    }
+    
+    return sortOrder === 'asc' ? comparison : -comparison;
+  });
+  
+  return sortedSongs;
+}
+
+// ソートとフィルターを適用する関数
+function applySort() {
+  let processedSongs = [...currentSongs];
+  
+  // ソートを適用
+  processedSongs = applySortToSongs(processedSongs, currentSortBy, currentSortOrder);
+  
+  // 表示を更新
+  displaySongs(processedSongs);
+}
+
 // メイン処理
 let currentSongs = [];
 
@@ -413,11 +474,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     displaySongs(songs);
     
     // フィルターイベントリスナーを追加
-    const filterSelect = document.getElementById('filterSelect');
-    filterSelect.addEventListener('change', (e) => {
-      const newFilteredSongs = applyFilter([...currentSongs], e.target.value);
-      displaySongs(newFilteredSongs);
+    // ソート関連のイベントリスナーを追加
+    const sortSelect = document.getElementById('sortSelect');
+    const sortOrderBtn = document.getElementById('sortOrderBtn');
+    
+    sortSelect.addEventListener('change', (e) => {
+      currentSortBy = e.target.value;
+      updateSortOrderButton();
+      applySort();
     });
+    
+    sortOrderBtn.addEventListener('click', () => {
+      // デフォルトソート時はクリックを無効にする
+      if (currentSortBy === 'default') {
+        return;
+      }
+      currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+      updateSortOrderIcon();
+      applySort();
+    });
+    
+    // ソート順ボタンの状態を更新
+    function updateSortOrderButton() {
+      const sortOrderBtn = document.getElementById('sortOrderBtn');
+      if (currentSortBy === 'default') {
+        sortOrderBtn.classList.add('disabled');
+        sortOrderBtn.classList.remove('asc', 'desc');
+      } else {
+        sortOrderBtn.classList.remove('disabled');
+        updateSortOrderIcon();
+      }
+    }
+    
+    // ソート順アイコンを更新
+    function updateSortOrderIcon() {
+      const sortOrderBtn = document.getElementById('sortOrderBtn');
+      sortOrderBtn.classList.remove('asc', 'desc');
+      if (currentSortOrder === 'asc') {
+        sortOrderBtn.classList.add('asc');
+      } else {
+        sortOrderBtn.classList.add('desc');
+      }
+    }
+    
+    // 初期のソート順ボタンを設定
+    updateSortOrderButton();
     
     // ページネーションイベントリスナーを追加
     const prevPageBtn = document.getElementById('prevPageBtn');

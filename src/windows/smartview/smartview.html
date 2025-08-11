@@ -32,15 +32,21 @@
       </div>
     </div>
     
-    <!-- フィルター -->
+    <!-- ソート -->
     <div class="flex items-center justify-between w-full max-w-100 mx-auto pr-3 flex-wrap gap-2">
       <div class="flex items-center gap-2 flex-wrap">
-        <select id="filterSelect" class="select-trigger">
-          <option value="all">すべて</option>
+        <select id="sortSelect" class="select-trigger">
+          <option value="default">デフォルト</option>
+          <option value="title">曲名</option>
           <option value="clear-type">クリアタイプ</option>
           <option value="score-rate">スコアレート</option>
           <option value="miss-count">ミスカウント</option>
         </select>
+        <button id="sortOrderBtn" class="icon-button" title="ソート順を切り替え">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="icon">
+            <path id="sortIcon" d="M7 14l5-5 5 5z"/>
+          </svg>
+        </button>
       </div>
       <div class="text-sm text-muted-foreground songCount">
         <span id="songCount">0</span>件

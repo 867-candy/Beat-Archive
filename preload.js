@@ -31,4 +31,8 @@ contextBridge.exposeInMainWorld('api', {
   takeSmartViewScreenshots: () => ipcRenderer.invoke('take-smartview-screenshots'),
   openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', url),
   sendToDiscord: (webhookUrl, message, screenshotDir) => ipcRenderer.invoke('send-to-discord', webhookUrl, message, screenshotDir)
+  // ローカル保存機能（無効化）
+  // saveDifficultyTableLocal: (tableUrl, tableData) => ipcRenderer.invoke('save-difficulty-table-local', tableUrl, tableData),
+  // loadDifficultyTableLocal: (tableUrl) => ipcRenderer.invoke('load-difficulty-table-local', tableUrl),
+  // isDifficultyTableCached: (tableUrl) => ipcRenderer.invoke('is-difficulty-table-cached', tableUrl)
 });

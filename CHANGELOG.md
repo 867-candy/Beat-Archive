@@ -17,11 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - リンクサービスにMinIRを追加
--
+- Compact View内に昇順降順ソートの切り替えを追加
 
 ### Changed
 - 設定からリンクサービス選択機能を削除し、クリアランプ画面に統合
-- 
+- シェアボタンをCompact Viewに名称変更
 
 ### Fixed
 - 楽曲別クリア状況のNOPLAYとNOSONGの色が逆になっていたのを修正

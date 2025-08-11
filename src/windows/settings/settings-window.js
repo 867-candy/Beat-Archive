@@ -34,6 +34,9 @@ async function loadSettings() {
     updateTableList();
     updateDiscordDisplay();
     setupEventListeners();
+    
+    // 起動時に設定された難易度表のローカル保存チェック（無効化）
+    // await checkAndCacheDifficultyTables();
   } catch (error) {
     showStatus('設定の読み込みに失敗しました: ' + error.message, 'error');
   }
@@ -307,6 +310,9 @@ async function addTable() {
     const newConfig = createConfigObject();
     await window.api.updateConfig(newConfig);
     showTableStatus(`難易度表「${name}」を追加し、設定を保存しました`, 'success');
+    
+    // ローカル保存を実行（無効化）
+    // await cacheDifficultyTable(url, name);
   } catch (error) {
     showTableStatus(`難易度表「${name}」を追加しましたが、設定の保存に失敗しました: ${error.message}`, 'error');
   }
@@ -930,3 +936,66 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
   setupEventListeners();
 });
+
+// ローカル保存機能（無効化）
+/*
+// 設定された難易度表のローカル保存チェック
+async function checkAndCacheDifficultyTables() {
+  console.log('難易度表のローカル保存状況をチェック中...');
+  
+  for (const table of state.difficultyTables) {
+    try {
+      // キャッシュされているかチェック
+      const cacheStatus = await window.api.isDifficultyTableCached(table.url);
+      
+      if (!cacheStatus.exists) {
+        console.log(`${table.name} がローカル保存されていません。保存処理を開始...`);
+        showTableStatus(`「${table.name}」をローカル保存中...`, 'info');
+        
+        // 難易度表データを取得
+        const tableData = await window.api.loadDifficultyTable(table.url);
+        
+        // ローカル保存
+        const saveResult = await window.api.saveDifficultyTableLocal(table.url, tableData);
+        
+        if (saveResult.success) {
+          console.log(`${table.name} のローカル保存が完了しました`);
+        } else {
+          console.error(`${table.name} のローカル保存に失敗:`, saveResult.error);
+        }
+      } else {
+        console.log(`${table.name} は既にローカル保存されています (保存日時: ${cacheStatus.savedAt})`);
+      }
+    } catch (error) {
+      console.error(`${table.name} のローカル保存チェック中にエラー:`, error);
+    }
+  }
+  
+  console.log('難易度表のローカル保存チェックが完了しました');
+  showTableStatus('難易度表のローカル保存チェックが完了しました', 'success');
+}
+
+// 難易度表追加時のローカル保存
+async function cacheDifficultyTable(tableUrl, tableName) {
+  try {
+    showTableStatus(`「${tableName}」をローカル保存中...`, 'info');
+    
+    // 難易度表データを取得
+    const tableData = await window.api.loadDifficultyTable(tableUrl);
+    
+    // ローカル保存
+    const saveResult = await window.api.saveDifficultyTableLocal(tableUrl, tableData);
+    
+    if (saveResult.success) {
+      console.log(`${tableName} のローカル保存が完了しました`);
+      showTableStatus(`「${tableName}」のローカル保存が完了しました`, 'success');
+    } else {
+      console.error(`${tableName} のローカル保存に失敗:`, saveResult.error);
+      showTableStatus(`「${tableName}」のローカル保存に失敗しました`, 'error');
+    }
+  } catch (error) {
+    console.error(`${tableName} のローカル保存中にエラー:`, error);
+    showTableStatus(`「${tableName}」のローカル保存中にエラーが発生しました`, 'error');
+  }
+}
+*/
