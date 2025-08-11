@@ -255,8 +255,9 @@
 }
 
 /* クリアタイプ別カラー */
-.clear-nosong { border-left-color: #d1d5db; background-color: #f3f4f6; }
-.clear-noplay { border-left-color: #f3f4f6; background-color: #f9fafb; }
+
+.clear-nosong { border-left-color: #f3f4f6; background-color: #f9fafb; }
+.clear-noplay { border-left-color: #d1d5db; background-color: #f3f4f6; }
 .clear-failed { border-left-color: #99a1af; background-color: #d0d0d0; }
 .clear-assist { border-left-color: #ff94db; background-color: #ff94db; }
 .clear-easy { border-left-color: #beffbe; background-color: #beffbe; }

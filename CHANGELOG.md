@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+# [1.1.10] - 2025-08-11
+
+### Added
+- 
+-
+
+### Changed
+- 
+- 
+
+### Fixed
+- 楽曲別クリア状況のNOPLAYとNOSONGの色が逆になっていたのを修正
+
 # [1.1.9] - 2025-08-11
 
 ### Added
