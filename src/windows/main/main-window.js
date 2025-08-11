@@ -51,7 +51,7 @@ async function init() {
   document.getElementById('dateInput').value = today;
   console.log(`[デバッグ] 初期化完了 - 日付設定: ${today}`);
   
-  // Shareボタンのイベントリスナーを設定
+  // Compact Viewボタンのイベントリスナーを設定
   const shareBtn = document.getElementById('shareBtn');
   if (shareBtn) {
     shareBtn.addEventListener('click', async () => {
@@ -73,7 +73,7 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
   if (!date) {
     console.log('[デバッグ] 日付が選択されていません');
     list.innerHTML = '<li class="no-results">日付を選択してください</li>';
-    // Shareボタンとスクリーンショットボタンを非表示
+    // Compact Viewボタンとスクリーンショットボタンを非表示
     const shareBtn = document.getElementById('shareBtn');
     if (shareBtn) {
       shareBtn.style.display = 'none';
@@ -88,7 +88,7 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
   console.log(`[デバッグ] 日付: ${date} のデータを読み込み中...`);
   list.innerHTML = '<li class="loading">読み込み中...</li>';
   
-  // 読み込み中はShareボタンとスクリーンショットボタンを非表示
+  // 読み込み中はCompact Viewボタンとスクリーンショットボタンを非表示
   const shareBtn = document.getElementById('shareBtn');
   if (shareBtn) {
     shareBtn.style.display = 'none';
@@ -116,7 +116,7 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
     
     if (data.length === 0) {
       list.innerHTML = '<li class="no-results">この日に更新された譜面はありません</li>';
-      // データなし時はShareボタンとスクリーンショットボタンを非表示
+      // データなし時はCompact Viewボタンとスクリーンショットボタンを非表示
       const shareBtn = document.getElementById('shareBtn');
       if (shareBtn) {
         shareBtn.style.display = 'none';
@@ -436,7 +436,7 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
     statsElement.innerHTML = statsHtml;
     list.insertBefore(statsElement, list.firstChild);
     
-    // 読み込み成功後にShareボタンとスクリーンショットボタンを表示
+    // 読み込み成功後にCompact Viewボタンとスクリーンショットボタンを表示
     const shareBtn = document.getElementById('shareBtn');
     if (shareBtn) {
       shareBtn.style.display = 'flex';

@@ -16,15 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # [1.1.10] - 2025-08-11
 
 ### Added
-- 
+- リンクサービスにMinIRを追加
 -
 
 ### Changed
-- 
+- 設定からリンクサービス選択機能を削除し、クリアランプ画面に統合
 - 
 
 ### Fixed
 - 楽曲別クリア状況のNOPLAYとNOSONGの色が逆になっていたのを修正
+- グラフの上でクリックをするとツールチップが消えていたのを修正
 
 # [1.1.9] - 2025-08-11
 
