@@ -1,0 +1,457 @@
+/* 設定ウィンドウ固有のスタイル */
+
+.setting-group {
+  margin-bottom: 25px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #3498db;
+}
+
+.setting-group h3 {
+  margin-top: 0;
+  color: #2c3e50;
+}
+
+.file-setting {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 15px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.file-setting > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.file-setting label {
+  width: 130px;
+  padding-right: 30px;
+  font-weight: bold;
+  color: #34495e;
+}
+
+.file-setting button {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.file-setting button:hover {
+  background: #2980b9;
+}
+
+.file-path {
+  font-size: 0.9em;
+  color: #7f8c8d;
+  font-style: italic;
+  flex: 1;
+}
+
+.file-info {
+  margin-left: 20px;
+}
+
+.file-info small {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.db-status {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #17a2b8;
+}
+
+.db-status h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 1em;
+}
+
+.detected-files {
+  display: grid;
+  gap: 8px;
+}
+
+.db-file {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+}
+
+.file-label {
+  font-family: monospace;
+  font-weight: bold;
+  color: #495057;
+}
+
+.file-status {
+  font-size: 0.9em;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.file-status.found {
+  background: #d4edda;
+  color: #155724;
+}
+
+.file-status.missing {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.link-preview {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  font-family: monospace;
+  color: #6c757d;
+}
+
+.save-btn {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+.save-btn:hover {
+  background: #229954;
+}
+
+.status {
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 4px;
+  display: none;
+  min-height: 20px;
+}
+
+.status.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.status.info {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.table-list {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.table-item {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.table-item:last-child {
+  border-bottom: none;
+}
+
+.table-item.dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+}
+
+.table-item.drag-over {
+  background-color: #e3f2fd;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.table-item.onGrab {
+  opacity: 0.8;
+  background: #f8f9fa;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border: 2px solid #3498db;
+  border-radius: 6px;
+  transform: scale(1.02);
+}
+
+.table-item.hidden {
+  display: none;
+}
+
+.drag-handle {
+  color: #666;
+  font-size: 16px;
+  margin-right: 10px;
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.table-info {
+  flex: 1;
+}
+
+.table-name {
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.table-url {
+  font-size: 0.85em;
+  color: #666;
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.table-priority {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+  min-width: 120px;
+}
+
+.priority-display {
+  font-size: 0.9em;
+  color: #666;
+  font-weight: bold;
+}
+
+.table-actions {
+  display: flex;
+  gap: 5px;
+  margin-left: 10px;
+}
+
+.table-actions button {
+  padding: 4px 8px;
+  font-size: 0.8em;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.btn-delete {
+  background: #e74c3c;
+  color: white;
+}
+
+.btn-delete:hover {
+  background: #c0392b;
+}
+
+.btn-move-up, .btn-move-down {
+  background: #3498db;
+  color: white;
+  font-weight: bold;
+  min-width: 25px;
+}
+
+.btn-move-up:hover, .btn-move-down:hover {
+  background: #2980b9;
+}
+
+.btn-move-up:disabled, .btn-move-down:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+}
+
+.btn-save-priority {
+  background: #27ae60;
+  color: white;
+  font-size: 0.7em;
+}
+
+.btn-save-priority:hover {
+  background: #229954;
+}
+
+.add-table-form {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: flex-end;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 0.9em;
+  color: #495057;
+  margin-bottom: 3px;
+}
+
+.form-group input {
+  padding: 6px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.form-group.url {
+  flex: 1;
+}
+
+.btn-add {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  height: fit-content;
+}
+
+.btn-add:hover {
+  background: #218838;
+}
+
+.btn-test {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 10px;
+  font-size: 14px;
+}
+
+.btn-test:hover {
+  background: #138496;
+}
+
+.btn-save {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-save:hover {
+  background: #218838;
+}
+
+.discord-guide {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #7289da;
+}
+
+.discord-guide h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 1em;
+}
+
+.discord-guide ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.discord-guide li {
+  margin-bottom: 5px;
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.default-table-setting {
+  background-color: #e8f5e8;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #c3e6cb;
+  margin-bottom: 20px;
+}
+
+.default-table-setting h4 {
+  margin: 0 0 15px 0;
+  color: #155724;
+  font-size: 1.1em;
+}
+
+.table-checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.table-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.table-checkbox-label {
+  font-size: 0.85em;
+  color: #28a745;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.default-table-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9em;
+  background: white;
+  cursor: pointer;
+}
+
+.empty-tables {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+  font-style: italic;
+}

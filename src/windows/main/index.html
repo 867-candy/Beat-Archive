@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Beat Archive - 更新曲一覧</title>
+  <link rel="stylesheet" href="../../common/styles/common.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <a href="../main/index.html" class="active">📄 更新曲一覧</a>
+      <a href="../clearlamp/clearlamp.html">💡 クリアランプ</a>
+      <a href="../settings/settings.html">⚙️ 設定</a>
+    </nav>
+
+    <h1>更新曲一覧</h1>
+
+    <div class="section">
+      <h2 style="margin: 0;">📅 日付指定</h2>
+      <div class="date-controls">
+        <input type="date" id="dateInput" />
+        <button class="btn primary" id="loadBtn">読み込み</button>
+        <button class="btn" id="screenshotBtn">スクリーンショット</button>
+      </div>
+      <h3>使い方</h3>
+      <p>日付を指定して「読み込み」ボタンをクリックすると、更新された曲の一覧が表示されます。</p>
+      <p>スクリーンショットを押すと、表示された曲の一覧を画像として保存できます。<br> 複数画面にまたがる場合には、全体の画像と分割された画像がそれぞれ生成されます。</p>
+     
+    </div>
+
+    <div class="section2">
+      <div class="songs-header">
+        <h2>🎵 更新された曲</h2>
+        <button class="btn share" id="shareBtn">
+          <img src="../../common/assets/icon/share-icon.svg" alt="Share" />
+          Share
+        </button>
+      </div>
+      <ul id="songList"></ul>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+/* メインウィンドウ固有のスタイル */
+.section {
+  border-left: 4px solid #3498db;
+}
+
+.section2 {
+  padding: 20px 20px 5px 20px;
+  border-left: 4px solid #3498db;
+}
+
+.date-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.date-controls input[type="date"] {
+  padding: 10px;
+  border: 2px solid #bdc3c7;
+  border-radius: 4px;
+  font-size: 14px;
+  width: auto;
+  margin-bottom: 0;
+}
+
+.songs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.songs-header h2 {
+  margin: 0;
+}
+
+#songList li {
+  border-left: 4px solid #e74c3c;
+}

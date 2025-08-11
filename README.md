@@ -6,26 +6,44 @@ Beatorajaのスコアデータとプレイログを管理するElectronアプリ
 
 ```
 Beat-Archive/
-├── main.js              # メインアプリケーション
-├── preload.js           # Electronプリロードスクリプト
-├── package.json         # Node.jsパッケージ設定
-├── config.json          # アプリケーション設定
-├── renderer/            # フロントエンドファイル
-│   ├── index.html       # メイン画面
-│   ├── renderer.js      # レンダラープロセス
-│   ├── settings.html    # 設定画面
-│   ├── settings.js      # 設定画面ロジック
-│   ├── clearlamp.html   # クリアランプ画面
-│   └── clearlamp.js     # クリアランプロジック
-├── sample-db/           # サンプルデータベース
-│   ├── score.db         # スコアデータ
-│   ├── scorelog.db      # プレイログ
-│   ├── scoredatalog.db  # 詳細プレイデータ
-│   ├── songdata.db      # 楽曲メタデータ
-│   └── songinfo.db      # 楽曲情報
-├── debug/               # デバッグスクリプト
-├── test/                # テストスクリプト
-└── testdata/            # テストデータ作成スクリプト
+├── package.json         # プロジェクト設定
+├── main.js             # Electronメインプロセス
+├── config.json         # アプリケーション設定
+├── src/                # ソースコード
+│   ├── debug/          # デバッグ用スクリプト置き場
+│   ├── common/         # 共通ファイル
+│   │   ├── styles/     # 共通スタイルシート
+│   │   │   └── common.css # 全ウィンドウ共通のCSS
+│   │   ├── assets/     # 共通アセット
+│   │   │   └── icon/   # アイコンファイル
+│   │   └── utils.js    # 共通ユーティリティ関数
+│   ├── windows/        # ウィンドウごとのディレクトリ
+│   │   ├── main/       # メインウィンドウ
+│   │   │   ├── index.html    # メイン画面HTML
+│   │   │   ├── renderer.js   # メイン画面JS
+│   │   │   └── styles.css    # メイン画面専用CSS
+│   │   ├── settings/   # 設定ウィンドウ
+│   │   │   ├── settings.html # 設定画面HTML
+│   │   │   ├── renderer.js   # 設定画面JS
+│   │   │   └── styles.css    # 設定画面専用CSS
+│   │   ├── smartview/  # スマートビューウィンドウ
+│   │   │   ├── smartview.html # スマートビューHTML
+│   │   │   ├── renderer.js    # スマートビューJS
+│   │   │   └── styles.css     # スマートビュー専用CSS
+│   │   └── clearlamp/  # クリアランプウィンドウ
+│   │       ├── clearlamp.html # クリアランプHTML
+│   │       ├── renderer.js    # クリアランプJS
+│   │       └── styles.css     # クリアランプ専用CSS
+│   └── preload.js      # Electronプリロードスクリプト
+├── sample-db/          # サンプルデータベース
+│   ├── score.db        # スコアデータ
+│   ├── scorelog.db     # プレイログ
+│   ├── scoredatalog.db # 詳細プレイデータ
+│   ├── songdata.db     # 楽曲メタデータ
+│   └── songinfo.db     # 楽曲情報
+├── debug/              # デバッグスクリプト
+├── test/               # テストスクリプト
+└── testdata/           # テストデータ作成スクリプト
 ```
 
 ## 主要機能
@@ -34,6 +52,20 @@ Beat-Archive/
 - **前日差分表示**: scoredatalogベースの前日比較
 - **難易度表統合**: 複数の難易度表からの情報取得
 - **統計表示**: プレイ統計とノーツ数集計
+- **スマートビュー**: ソーシャル投稿機能付きコンパクト表示
+- **クリアランプ分析**: 楽曲別クリア状況の可視化
+
+## アーキテクチャ
+
+### ディレクトリ設計
+- **src/common/**: 全ウィンドウで共有する共通機能（CSS、アセット、ユーティリティ）
+- **src/windows/**: ウィンドウごとに独立したファイル群（HTML、JS、CSS）
+- **分離されたCSS**: 各ウィンドウの`styles.css`でインラインCSSを外部化
+
+### CSS階層構造
+- **common.css**: 全ウィンドウ共通のベーススタイル
+- **各ウィンドウのstyles.css**: ウィンドウ固有のスタイル
+- **保守性**: インラインCSSからの分離により可読性とメンテナンス性を向上
 
 ## 使用方法
 

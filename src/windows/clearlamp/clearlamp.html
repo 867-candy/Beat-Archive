@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>クリアランプ - Beat Archive</title>
+  <link rel="stylesheet" href="../../common/styles/common.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <a href="../main/index.html">📄 更新曲一覧</a>
+      <a href="../clearlamp/clearlamp.html" class="active">💡 クリアランプ</a>
+      <a href="../settings/settings.html">⚙️ 設定</a>
+    </nav>
+
+    <h1>💡 クリアランプ</h1>
+
+    <div class="controls">
+      <div class="table-selector">
+        <label>難易度表:</label>
+        <select id="tableSelect">
+          <option value="">読み込み中...</option>
+        </select>
+      </div>
+      
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-number" id="totalSongs">-</div>
+          <div class="stat-label">総楽曲数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="playedSongs">-</div>
+          <div class="stat-label">プレイ済み</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="clearRate">-</div>
+          <div class="stat-label">クリア率</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="hardClearRate">-</div>
+          <div class="stat-label">HARD以上</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <div class="chart-title">レベル別クリア状況</div>
+      <div class="chart-placeholder" id="chartContainer">
+        難易度表を選択してください
+      </div>
+      
+      
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-color" style="background: #F3E8FF;"></div>
+          <span>MAX</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #85FAC0;"></div>
+          <span>PERFECT</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #53eafd;"></div>
+          <span>FULL COMBO</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ffd230;"></div>
+          <span>EX HARD CLEAR</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ffa2a2;"></div>
+          <span>HARD CLEAR</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #51a2ff;"></div>
+          <span>CLEAR</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #7bf1a8;"></div>
+          <span>EASY CLEAR</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ad46ff;"></div>
+          <span>ASSIST EASY CLEAR</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #99a1af;"></div>
+          <span>FAILED</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #f3f4f6;"></div>
+          <span>NO PLAY</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ffffff; border: 1px solid #ccc;"></div>
+          <span>NO SONG</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <div class="table-header">
+        <h3 class="table-title">楽曲別クリア状況</h3>
+        <div class="level-filter">
+          <label for="levelSelect">レベルフィルタ:</label>
+          <select id="levelSelect">
+            <option value="">-</option>
+          </select>
+          <label for="songSearch">楽曲名検索:</label>
+          <input type="text" id="songSearch" placeholder="楽曲名を入力（部分一致）">
+        </div>
+      </div>
+      <div id="tableContainer">
+        <div class="loading">難易度表を選択してください</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

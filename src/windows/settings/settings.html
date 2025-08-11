@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>設定 - Beat Archive</title>
+  <link rel="stylesheet" href="../../common/styles/common.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <a href="../main/index.html">📄 更新曲一覧</a>
+      <a href="../clearlamp/clearlamp.html">💡 クリアランプ</a>
+      <a href="../settings/settings.html" class="active">⚙️ 設定</a>
+    </nav>
+
+    <h1>⚙️ 設定</h1>
+
+    <div class="setting-group">
+      <h3>📁 DBファイル設定</h3>
+      <p>beatorajaのデータベースファイルを指定してください。</p>
+      
+      <div class="file-setting">
+        <div>
+          <label>Player* フォルダ:</label>
+          <button id="selectPlayerDbFolder">フォルダを選択</button>
+          <span class="file-path" id="playerDbFolderPath">未設定</span>
+        </div>
+        <div class="file-info">
+          <small>beatoraja/player/player* を選択してください。</small> <br>
+          <small>score.db, scorelog.db, scoredatalog.db を自動で読み込みます。</small>
+        </div>
+      </div>
+      
+      <div class="file-setting">
+        <div>
+          <label>songdata.db:</label>
+          <button id="selectSongdata">ファイルを選択</button>
+          <span class="file-path" id="songdataPath">未設定</span>
+        </div>
+        <div class="file-info">
+          <small>通常は beatoraja/songdata.db にあります</small>
+        </div>
+      </div>
+      
+      <div class="db-status">
+        <h4>検出されたDBファイル:</h4>
+        <div class="detected-files">
+          <div class="db-file">
+            <span class="file-label">score.db:</span>
+            <span class="file-status" id="scoreStatus">未検出</span>
+          </div>
+          <div class="db-file">
+            <span class="file-label">scorelog.db:</span>
+            <span class="file-status" id="scorelogStatus">未検出</span>
+          </div>
+          <div class="db-file">
+            <span class="file-label">scoredatalog.db:</span>
+            <span class="file-status" id="scoredatalogStatus">未検出</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="setting-group">
+      <h3>📊 難易度表設定</h3>
+      <p>使用する難易度表を設定してください。ドラッグアンドドロップで優先順位を変更できます。上にあるものほど優先されます。</p>
+      
+      <div class="default-table-setting">
+        <h4>🎯 更新曲一覧で使用する難易度表</h4>
+        <div class="file-info">
+          <small>各難易度表の右側にあるチェックボックスをONにすると、その難易度表が更新曲一覧のレベル表示に使用されます。<br>
+          複数の難易度表を選択できます。優先順位は表の並び順で決まります（上にあるものほど優先されます）。</small>
+        </div>
+      </div>
+      
+      <div class="table-list" id="tableList">
+        <div class="empty-tables">難易度表が設定されていません</div>
+      </div>
+
+      <div class="add-table-form">
+        <h4>新しい難易度表を追加</h4>
+        <div class="form-row">
+          <div class="form-group url">
+            <label>表のURL</label>
+            <input type="text" id="tableUrl" placeholder="例: https://stellabms.xyz/sl/table.html">
+          </div>
+          <button class="btn-add" id="addTableBtn">追加</button>
+        </div>
+      </div>
+      
+      <div class="status" id="tableStatus"></div>
+    </div>
+
+    <div class="setting-group">
+      <h3>🔗 楽曲情報リンク設定</h3>
+      <p>クリアランプ画面の楽曲名から外部サイトにリンクする設定を行います。</p>
+      
+      <div class="setting-item">
+        <label for="songLinkService">リンク先サービス:</label>
+        <select id="songLinkService">
+          <option value="">リンクなし</option>
+          <option value="lr2ir">LR2IR</option>
+          <option value="mochair">MochaIR</option>
+          <option value="bms-score-viewer">BMS Score Viewer</option>
+        </select>
+      </div>
+      
+      <div class="link-preview" id="linkPreview">
+        <small>プレビュー: リンクサービスを選択してください</small>
+      </div>
+      
+      <div class="status" id="linkStatus"></div>
+    </div>
+
+    <div class="setting-group">
+      <h3>💬 Discord連携設定</h3>
+      <p>DiscordのWebhook URLを設定すると、Smart ViewからDiscordに統計情報を投稿できるようになります。</p>
+      
+      <div class="setting-item">
+        <label for="discordWebhookUrl">Discord Webhook URL:</label>
+        <input type="text" id="discordWebhookUrl" placeholder="例: https://discord.com/api/webhooks/1234567890/abcdefghijklmnop">
+        <small>DiscordサーバーのWebhook URLを入力してください</small>
+      </div>
+      
+      <div class="setting-item">
+        <button class="btn-test" id="testDiscordBtn">接続テスト</button>
+        <button class="btn-save" id="saveDiscordBtn">保存</button>
+      </div>
+      
+      <div class="status" id="discordStatus"></div>
+      
+      <div class="discord-guide">
+        <h4>📝 Discord Webhook URLの取得方法</h4>
+        <ol>
+          <li>Discordサーバーの設定 → 連携サービス → ウェブフック</li>
+          <li>「新しいウェブフック」をクリック</li>
+          <li>チャンネルと名前を設定</li>
+          <li>「ウェブフックURLをコピー」をクリック</li>
+          <li>コピーしたURLを上記フィールドに貼り付け</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="setting-group">
+
+      <h3>ℹ️ 設定ガイド</h3>
+      <p>beatorajaのデータベースファイルは通常、以下の場所にあります：</p>
+      <ul>
+        <li><code>beatoraja/player/player*</code> フォルダ - プレイヤーデータ
+          <ul>
+            <li>score.db - スコアデータ</li>
+            <li>scorelog.db - プレイログ</li>
+            <li>scoredatalog.db - スコアデータログ</li>
+          </ul>
+        </li>
+        <li><code>beatoraja/songdata.db</code> - 楽曲情報</li>
+      </ul>
+      
+      <p><strong>💡 ヒント：</strong> プレイヤーDBフォルダを選択すると、3つのDBファイル（score.db、scorelog.db、scoredatalog.db）が自動的に検出されます。</p>
+      
+      <h4>📊 難易度表について</h4>
+      <p>難易度表は以下の形式で指定してください：</p>
+      <ul>
+        <li><strong>HTMLページ</strong> - bmstableメタタグからJSONのURLを自動抽出</li>
+      </ul>
+      <p>HTMLページの例: <code>https://stellabms.xyz/sl/table.html</code></p>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

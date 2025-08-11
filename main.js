@@ -1565,11 +1565,11 @@ function createWindow() {
     height: 1000,
     autoHideMenuBar: true, // メニューバーを自動的に隠す
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'src', 'preload.js')
     }
   });
 
-  win.loadFile('renderer/index.html');
+  win.loadFile('src/windows/main/index.html');
 }
 
 function createSmartViewWindow() {
@@ -1578,12 +1578,12 @@ function createSmartViewWindow() {
     height: 900,
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'src', 'preload.js')
     },
     title: 'Smart View - Beat Archive'
   });
 
-  smartViewWin.loadFile('renderer/smartview.html');
+  smartViewWin.loadFile('src/windows/smartview/smartview.html');
 }
 
 // 楽曲のタイトルとサブタイトルを結合して表示用タイトルを生成
