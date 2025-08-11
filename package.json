@@ -10,7 +10,7 @@
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "dist": "npm run build",
-    "package": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"sample-db|config.json|local-data.db|debug|test|testdata\" --executable-name=\"Beat-Archive-Portable\"",
+    "package": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"sample-db|config.json|local-data.db|debug|test|testdata|src/debug\" --executable-name=\"Beat-Archive-Portable\"",
     "version:patch": "npm version patch && git push origin main && git push origin --tags",
     "version:minor": "npm version minor && git push origin main && git push origin --tags",
     "version:major": "npm version major && git push origin main && git push origin --tags",
@@ -47,13 +47,15 @@
     },
     "files": [
       "main.js",
-      "preload.js",
-      "renderer/**/*",
+      "src/preload.js",
+      "src/windows/**/*",
+      "src/common/**/*",
       "config-build.json",
       "node_modules/**/*",
       "!debug",
       "!test",
-      "!testdata"
+      "!testdata",
+      "!src/debug"
     ],
     "win": {
       "target": [
