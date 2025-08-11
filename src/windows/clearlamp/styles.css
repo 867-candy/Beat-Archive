@@ -34,6 +34,9 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: nowrap; /* 折り返しを無効にする */
+  min-width: 0; /* フレックスアイテムがオーバーフローしないように */
+  width: 100%; /* 全幅を使用 */
 }
 
 .level-filter label {
@@ -49,6 +52,7 @@
   background: white;
   font-size: 14px;
   max-width: 200px;
+  flex-shrink: 0; /* ラベルと値が重要なので縮小しない */
 }
 
 .level-filter input[type="text"] {
@@ -57,8 +61,8 @@
   border-radius: 4px;
   background: white;
   font-size: 14px;
-  min-width: 250px;
-  margin-left: 15px;
+  max-width: 300px;
+  flex-shrink: 1; /* 必要に応じて縮小 */
 }
 
 .level-filter input[type="text"]:focus {
@@ -131,9 +135,13 @@
 
 .chart-svg rect[data-level] {
   transition: opacity 0.2s ease;
+  cursor: default;
+  user-select: none;
 }
 
-.chart-svg rect[data-level]:hover {
+.chart-svg rect[data-level]:hover,
+.chart-svg rect[data-level].chart-rect-hover {
+  opacity: 0.8;
   stroke: #333;
   stroke-width: 1;
 }
@@ -150,6 +158,11 @@
   background: #f8f9fa;
   padding: 15px 20px;
   border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
 }
 
 .table-title {
@@ -157,6 +170,35 @@
   font-weight: bold;
   color: #2c3e50;
   margin: 0;
+  flex-shrink: 0;
+}
+
+.link-service-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 300px;
+  flex-shrink: 0;
+}
+
+.link-service-selector label {
+  font-weight: bold;
+  color: #2c3e50;
+  white-space: nowrap;
+}
+
+.link-service-selector select {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  font-size: 14px;
+  min-width: 150px;
+}
+
+.song-search-txt{
+    
+  margin-left: 30px;
 }
 
 .song-table {

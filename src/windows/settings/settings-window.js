@@ -8,7 +8,6 @@ const state = {
   },
   difficultyTables: [],
   defaultTableUrls: [], // 変更: 複数の難易度表URLを格納する配列
-  songLinkService: '', // 楽曲情報リンクサービス設定
   discordWebhookUrl: '' // Discord Webhook URL設定
 };
 
@@ -18,7 +17,6 @@ async function loadSettings() {
     const config = await window.api.getConfig();
     Object.assign(state.dbPaths, config.dbPaths);
     state.difficultyTables = config.difficultyTables || [];
-    state.songLinkService = config.songLinkService || '';
     state.discordWebhookUrl = config.discordWebhookUrl || '';
     
     // 旧設定形式との互換性を保つ
@@ -34,7 +32,6 @@ async function loadSettings() {
     
     updatePathDisplays();
     updateTableList();
-    updateLinkServiceDisplay();
     updateDiscordDisplay();
     setupEventListeners();
   } catch (error) {
@@ -230,8 +227,7 @@ function createConfigObject() {
   return {
     dbPaths: state.dbPaths,
     difficultyTables: state.difficultyTables,
-    defaultTableUrls: state.defaultTableUrls,
-    songLinkService: state.songLinkService
+    defaultTableUrls: state.defaultTableUrls
   };
 }
 
@@ -705,19 +701,6 @@ function showTableStatus(message, type = 'success') {
   }, 3000);
 }
 
-// 楽曲リンク設定ステータス表示
-function showLinkStatus(message, type = 'success') {
-  const statusEl = document.getElementById('linkStatus');
-  statusEl.textContent = message;
-  statusEl.className = `status ${type}`;
-  statusEl.style.display = 'block';
-  
-  // 3秒後に自動的に非表示
-  setTimeout(() => {
-    statusEl.style.display = 'none';
-  }, 3000);
-}
-
 // イベントリスナー設定（一度だけ実行）
 function setupEventListeners() {
   // 既にイベントリスナーが設定されている場合はスキップ
@@ -841,51 +824,6 @@ function setupEventListeners() {
 }
 
 // 楽曲情報リンクサービス表示を更新
-function updateLinkServiceDisplay() {
-  const songLinkService = document.getElementById('songLinkService');
-  if (songLinkService) {
-    songLinkService.value = state.songLinkService;
-    updateLinkPreview();
-    
-    // イベントリスナーを追加
-    songLinkService.addEventListener('change', () => {
-      updateLinkPreview();
-      saveLinkServiceSetting();
-    });
-  }
-}
-
-// リンクプレビューを更新
-function updateLinkPreview() {
-  const service = document.getElementById('songLinkService').value;
-  const previewElement = document.getElementById('linkPreview');
-  
-  const serviceInfo = {
-    '': 'リンクサービスを選択してください',
-    'lr2ir': 'LR2IR: http://www.dream-pro.info/~lavalse/LR2IR/search.cgi?mode=ranking&bmsmd5={md5}',
-    'mochair': 'MochaIR: http://mocha-repository.info/song.php?sha256={sha256}',
-    'bms-score-viewer': 'BMS Score Viewer: https://bms-score-viewer.pages.dev/view?md5={md5}'
-  };
-  
-  previewElement.innerHTML = `<small>プレビュー: ${serviceInfo[service] || 'Unknown service'}</small>`;
-}
-
-// 楽曲情報リンクサービス設定を保存
-async function saveLinkServiceSetting() {
-  try {
-    const service = document.getElementById('songLinkService').value;
-    state.songLinkService = service;
-    
-    const config = await window.api.getConfig();
-    config.songLinkService = service;
-    
-    await window.api.updateConfig(config);
-    showLinkStatus('楽曲情報リンク設定を保存しました', 'success');
-  } catch (error) {
-    showLinkStatus('楽曲情報リンク設定の保存に失敗しました: ' + error.message, 'error');
-  }
-}
-
 // Discord設定表示を更新
 function updateDiscordDisplay() {
   const discordWebhookUrl = document.getElementById('discordWebhookUrl');

@@ -102,12 +102,22 @@
     <div class="table-container">
       <div class="table-header">
         <h3 class="table-title">楽曲別クリア状況</h3>
+        <div class="link-service-selector">
+          <label for="linkServiceSelect">リンクサービス:</label>
+          <select id="linkServiceSelect">
+            <option value="none">なし</option>
+            <option value="lr2ir">LR2IR</option>
+            <option value="mochair">MochaIR</option>
+            <option value="minir">MinIR</option>
+            <option value="bms-score-viewer">BMS Score Viewer</option>
+          </select>
+        </div>
         <div class="level-filter">
           <label for="levelSelect">レベルフィルタ:</label>
           <select id="levelSelect">
             <option value="">-</option>
           </select>
-          <label for="songSearch">楽曲名検索:</label>
+          <label class ="song-search-txt"for="songSearch">楽曲名検索:</label>
           <input type="text" id="songSearch" placeholder="楽曲名を入力（部分一致）">
         </div>
       </div>

@@ -7,11 +7,22 @@ const state = {
   songSearchText: '', // 楽曲名検索テキスト
   sortColumn: 'none', // ソート対象のカラム (none, level, title, clear, misscount, score, djlevel, scorerate, lastplayed)
   sortDirection: 'asc', // ソート方向 ('asc' または 'desc')
-  songLinkService: 'none' // 楽曲リンクサービス設定
+  songLinkService: 'none', // 楽曲リンクサービス設定
+  urlCache: new Map() // URL生成キャッシュ
 };
 
 // 楽曲リンクURL生成関数
 async function generateSongUrl(song, linkService) {
+  // キャッシュキーを生成
+  const cacheKey = `${song.md5 || song.originalMd5}_${song.sha256 || song.originalSha256}_${linkService}`;
+  
+  // キャッシュから確認
+  if (state.urlCache.has(cacheKey)) {
+    const cachedUrl = state.urlCache.get(cacheKey);
+    console.log(`Cache hit for ${song.title}: ${cachedUrl}`);
+    return cachedUrl;
+  }
+  
   // 特定の楽曲のデバッグ情報を出力
   const isDistanceFields = song.title && song.title.includes('Distance Fields');
   
@@ -52,6 +63,7 @@ async function generateSongUrl(song, linkService) {
       if (md5) {
         const url = `http://www.dream-pro.info/~lavalse/LR2IR/search.cgi?mode=ranking&bmsmd5=${md5}`;
         console.log('Generated LR2IR URL:', url);
+        state.urlCache.set(cacheKey, url);
         return url;
       } else {
         console.log('No MD5 available for LR2IR');
@@ -88,6 +100,7 @@ async function generateSongUrl(song, linkService) {
         if (isDistanceFields) {
           console.log('=== Distance Fields: Generated MochaIR URL ===', url);
         }
+        state.urlCache.set(cacheKey, url);
         return url;
       } else {
         console.log(`No SHA256 available for MochaIR (song: ${song.title})`);
@@ -100,9 +113,35 @@ async function generateSongUrl(song, linkService) {
       if (md5) {
         const url = `https://bms-score-viewer.pages.dev/view?md5=${md5}`;
         console.log('Generated BMS Score Viewer URL:', url);
+        state.urlCache.set(cacheKey, url);
         return url;
       } else {
         console.log('No MD5 available for BMS Score Viewer');
+      }
+      break;
+    case 'minir':
+      // SHA256がない場合、MD5からSHA256への変換を試行
+      if (!sha256 && md5) {
+        try {
+          console.log(`Converting MD5 to SHA256 for MinIR URL: ${md5} (song: ${song.title})`);
+          sha256 = await window.api.convertMd5ToSha256(md5);
+          if (sha256) {
+            console.log(`Successfully converted MD5 to SHA256 for MinIR: ${sha256} (song: ${song.title})`);
+          } else {
+            console.log(`Failed to convert MD5 to SHA256 for MinIR: ${md5} (song: ${song.title})`);
+          }
+        } catch (error) {
+          console.error(`Error converting MD5 to SHA256 for MinIR (song: ${song.title}):`, error);
+        }
+      }
+      
+      if (sha256) {
+        const url = `https://www.gaftalk.com/minir/#/viewer/song/${sha256}/0`;
+        console.log('Generated MinIR URL:', url);
+        state.urlCache.set(cacheKey, url);
+        return url;
+      } else {
+        console.log(`No SHA256 available for MinIR (song: ${song.title})`);
       }
       break;
     default:
@@ -114,6 +153,8 @@ async function generateSongUrl(song, linkService) {
   }
   
   console.log('No URL generated, returning null');
+  // nullの場合もキャッシュに保存（再計算を避けるため）
+  state.urlCache.set(cacheKey, null);
   return null;
 }
 
@@ -133,9 +174,19 @@ async function initialize() {
 async function loadSettings() {
   try {
     const config = await window.api.getConfig();
-    state.songLinkService = config.songLinkService || 'none';
+    // クリアランプ画面専用の設定を優先して使用、なければ全体設定、それもなければデフォルト
+    state.songLinkService = config.clearlampLinkService || config.songLinkService || 'none';
+    
+    // UIに反映
+    const linkServiceSelect = document.getElementById('linkServiceSelect');
+    if (linkServiceSelect) {
+      linkServiceSelect.value = state.songLinkService;
+    }
+    
     console.log('=== Settings loaded ===');
-    console.log('Loaded songLinkService setting:', state.songLinkService);
+    console.log('Loaded clearlampLinkService setting:', config.clearlampLinkService);
+    console.log('Loaded songLinkService setting:', config.songLinkService);
+    console.log('Using linkService:', state.songLinkService);
     console.log('Full config:', config);
     console.log('=== End Settings ===');
   } catch (error) {
@@ -180,6 +231,7 @@ function setupEventListeners() {
   document.getElementById('tableSelect').addEventListener('change', handleTableChange);
   document.getElementById('levelSelect').addEventListener('change', handleLevelFilterChange);
   document.getElementById('songSearch').addEventListener('input', handleSongSearchChange);
+  document.getElementById('linkServiceSelect').addEventListener('change', handleLinkServiceChange);
 }
 
 // 難易度表選択変更時の処理
@@ -242,6 +294,33 @@ async function handleLevelFilterChange(event) {
 async function handleSongSearchChange(event) {
   state.songSearchText = event.target.value.toLowerCase();
   await updateSongTable();
+}
+
+// リンクサービス変更時の処理
+async function handleLinkServiceChange(event) {
+  const newService = event.target.value;
+  console.log(`リンクサービス変更: ${state.songLinkService} -> ${newService}`);
+  
+  state.songLinkService = newService;
+  
+  // 設定を保存
+  try {
+    const config = await window.api.getConfig();
+    config.clearlampLinkService = newService; // クリアランプ画面専用の設定として保存
+    await window.api.updateConfig(config);
+    console.log('リンクサービス設定を保存しました:', newService);
+  } catch (error) {
+    console.error('リンクサービス設定の保存に失敗しました:', error);
+  }
+  
+  // URLキャッシュをクリア
+  state.urlCache.clear();
+  console.log('URLキャッシュをクリアしました');
+  
+  // 楽曲テーブルを再生成（URL再計算）
+  showTableLoading();
+  await updateSongTable();
+  console.log('楽曲テーブルを再生成しました');
 }
 
 // 難易度表データを読み込み
@@ -820,7 +899,6 @@ function updateChart() {
           <rect x="${currentX}" y="${y}" width="${width}" height="${barHeight}" 
                 fill="${clearColors[clearType]}" stroke="#fff" stroke-width="0.5"
                 data-level="${level}" data-clear="${clearType}" data-count="${count}">
-            <title>${level} - ${clearLabels[clearType]}: ${count}曲 (${(percentage * 100).toFixed(1)}%)</title>
           </rect>
         `;
         
@@ -863,16 +941,121 @@ function updateChart() {
   
   chartContainer.innerHTML = svgHtml;
   
+  // カスタムツールチップ要素を作成
+  let tooltip = chartContainer.querySelector('.custom-tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.className = 'custom-tooltip';
+    tooltip.style.cssText = `
+      position: absolute;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      pointer-events: none;
+      z-index: 1000;
+      display: none;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      left: -9999px;
+      top: -9999px;
+    `;
+    chartContainer.appendChild(tooltip);
+  }
+  
   // ホバーイベントを追加
   const rects = chartContainer.querySelectorAll('rect[data-level]');
   rects.forEach(rect => {
     rect.addEventListener('mouseenter', function(e) {
-      this.style.opacity = '0.8';
-      this.style.cursor = 'pointer';
+      this.classList.add('chart-rect-hover');
+      this.style.cursor = 'default';
+      
+      // カスタムツールチップを表示
+      const level = this.getAttribute('data-level');
+      const clearType = this.getAttribute('data-clear');
+      const count = this.getAttribute('data-count');
+      const clearLabels = {
+        '-1': 'NO SONG',
+        0: 'NO PLAY',
+        1: 'FAILED', 
+        2: 'ASSIST EASY CLEAR',
+        3: 'ASSIST EASY CLEAR',
+        4: 'EASY CLEAR',
+        5: 'CLEAR',
+        6: 'HARD CLEAR',
+        7: 'EX HARD CLEAR',
+        8: 'FULL COMBO',
+        9: 'PERFECT',
+        10: 'MAX'
+      };
+      
+      // レベル総数を計算
+      const levelSongs = state.songs.filter(song => song.level.toString() === level);
+      const totalSongs = levelSongs.length;
+      const percentage = totalSongs > 0 ? ((count / totalSongs) * 100).toFixed(1) : '0.0';
+      
+      tooltip.innerHTML = `${level} - ${clearLabels[clearType]}: ${count}曲 (${percentage}%)`;
+      
+      // 初期位置を設定（ページ座標を使用）
+      console.log('Mouse event:', { clientX: e.clientX, clientY: e.clientY });
+      
+      // ページ全体での座標を使用
+      tooltip.style.position = 'fixed';
+      tooltip.style.left = (e.clientX + 15) + 'px';
+      tooltip.style.top = (e.clientY + 15) + 'px';
+      tooltip.style.display = 'block';
+      
+      console.log('Tooltip positioned at (fixed):', tooltip.style.left, tooltip.style.top);
+    });
+    
+    rect.addEventListener('mousemove', function(e) {
+      // ページ座標を使用してツールチップを移動
+      console.log('Mousemove (fixed):', { clientX: e.clientX, clientY: e.clientY });
+      
+      // ツールチップをマウスの右下に表示（fixed位置）
+      tooltip.style.position = 'fixed';
+      tooltip.style.left = (e.clientX + 15) + 'px';
+      tooltip.style.top = (e.clientY + 15) + 'px';
+      
+      // 画面端での調整
+      const tooltipRect = tooltip.getBoundingClientRect();
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      
+      // 右端を超える場合は左側に表示
+      if (e.clientX + tooltipRect.width + 15 > windowWidth) {
+        tooltip.style.left = (e.clientX - tooltipRect.width - 15) + 'px';
+      }
+      
+      // 下端を超える場合は上側に表示
+      if (e.clientY + tooltipRect.height + 15 > windowHeight) {
+        tooltip.style.top = (e.clientY - tooltipRect.height - 15) + 'px';
+      }
     });
     
     rect.addEventListener('mouseleave', function(e) {
-      this.style.opacity = '1';
+      this.classList.remove('chart-rect-hover');
+      tooltip.style.display = 'none';
+    });
+    
+    // クリックイベントを無効化
+    rect.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      // クリック後もホバー状態とツールチップを維持
+      if (this.matches(':hover')) {
+        this.classList.add('chart-rect-hover');
+        tooltip.style.display = 'block';
+      }
+      return false;
+    });
+    
+    // コンテキストメニューも無効化
+    rect.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
     });
   });
 }
@@ -1062,6 +1245,11 @@ function showLoading() {
 function showError(message) {
   document.getElementById('tableContainer').innerHTML = `<div class="no-data">エラー: ${escapeHtml(message)}</div>`;
   document.getElementById('chartContainer').innerHTML = `<div class="no-data">エラー: ${escapeHtml(message)}</div>`;
+}
+
+// テーブル読み込み中表示
+function showTableLoading() {
+  document.getElementById('tableContainer').innerHTML = '<div class="loading">リンクURLを生成中...</div>';
 }
 
 // 表示をリセット
