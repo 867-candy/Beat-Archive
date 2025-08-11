@@ -1101,7 +1101,8 @@ async function calculateDailyBestUpdates(sha256, targetDate, scorelogDB, scorelo
         }
         
         // MISS改善（初期値999999から現在のMISSへ）
-        if (update.minbp < 999999) {
+        // ただし、前回ミスカウントが-999999の場合や初回プレイ時（NO PLAYから）は差分表示しない
+        if (update.minbp < 999999 && update.oldminbp !== -999999 && update.oldscore > 0) {
           // 楽曲のノーツ数から実際のMISSを減算した値を計算
           let missImprovement = 999999 - update.minbp;
           
@@ -1150,9 +1151,13 @@ async function calculateDailyBestUpdates(sha256, targetDate, scorelogDB, scorelo
         
         if (isDevelopment) {
           // 楽曲情報があれば、ノーツ数を使って改善数を計算
-          let missImprovement = 999999 - update.minbp;
-          if (song && song.notes && typeof song.notes === 'number' && song.notes > 0) {
-            missImprovement = song.notes - update.minbp;
+          // ただし、前回ミスカウントが-999999の場合や初回プレイ時（NO PLAYから）は差分表示しない
+          let missImprovement = 0;
+          if (update.oldminbp !== -999999 && update.oldscore > 0) {
+            missImprovement = 999999 - update.minbp;
+            if (song && song.notes && typeof song.notes === 'number' && song.notes > 0) {
+              missImprovement = song.notes - update.minbp;
+            }
           }
           console.log(`[DEBUG] ${sha256.substring(0, 8)}...: 初回プレイ - スコア=${update.score}, MISS改善=${missImprovement}, クリア=${update.clear}`);
         }
@@ -1179,7 +1184,8 @@ async function calculateDailyBestUpdates(sha256, targetDate, scorelogDB, scorelo
         }
         
         // MISS改善（減少した場合のみ）
-        if (missDiff > 0 && update.oldminbp < 2147483647 && update.minbp < 999999) {
+        // ただし、前回ミスカウントが-999999の場合は差分表示しない
+        if (missDiff > 0 && update.oldminbp < 2147483647 && update.minbp < 999999 && update.oldminbp !== -999999) {
           updates.push({
             type: 'daily_miss',
             diff: -missDiff, // 負の値で保存（表示時に-52として表示）
@@ -3272,7 +3278,7 @@ ipcMain.handle('smart-view-window', () => {
 // Smart View統計情報の保存機能
 ipcMain.handle('save-smart-view-stats', async (_, stats) => {
   try {
-    const statsPath = path.join(__dirname, 'smartview-stats.json');
+    const statsPath = path.join(__dirname, 'src', 'windows', 'smartview', 'smartview-stats.json');
     fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
     console.log('Smart View統計情報を保存しました:', statsPath);
     return true;
@@ -3285,7 +3291,7 @@ ipcMain.handle('save-smart-view-stats', async (_, stats) => {
 // Smart View統計情報の読み込み機能
 ipcMain.handle('load-smart-view-stats', async () => {
   try {
-    const statsPath = path.join(__dirname, 'smartview-stats.json');
+    const statsPath = path.join(__dirname, 'src', 'windows', 'smartview', 'smartview-stats.json');
     if (fs.existsSync(statsPath)) {
       const statsData = fs.readFileSync(statsPath, 'utf8');
       const stats = JSON.parse(statsData);
