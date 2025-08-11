@@ -34,6 +34,7 @@ jobs:
       with:
         name: windows-build
         path: dist/*.exe
+        retention-days: 3
 
   # リリース時の配布用ビルド
   release-build:

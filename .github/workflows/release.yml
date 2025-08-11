@@ -38,7 +38,7 @@ jobs:
       with:
         name: windows-build
         path: dist/*.exe
-        retention-days: 30
+        retention-days: 7
         
   # ポータブル版のビルド（Windows専用）
   build-portable:
@@ -68,7 +68,7 @@ jobs:
       with:
         name: windows-portable
         path: dist/beat-archive-win32-x64/
-        retention-days: 30
+        retention-days: 7
 
   # タグがpushされた時のリリース作成
   release:
@@ -77,6 +77,58 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Delete old releases
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const { owner, repo } = context.repo;
+          
+          // 全てのリリースを取得
+          const releases = await github.rest.repos.listReleases({
+            owner,
+            repo,
+            per_page: 100
+          });
+          
+          // 最新の3つのリリース以外を削除
+          const releasesToDelete = releases.data.slice(3);
+          
+          for (const release of releasesToDelete) {
+            console.log(`Deleting release: ${release.tag_name}`);
+            await github.rest.repos.deleteRelease({
+              owner,
+              repo,
+              release_id: release.id
+            });
+          }
+          
+          console.log(`Deleted ${releasesToDelete.length} old releases`);
+          
+          // 古いタグも削除（最新の3つ以外）
+          const tags = await github.rest.repos.listTags({
+            owner,
+            repo,
+            per_page: 100
+          });
+          
+          const tagsToDelete = tags.data.slice(3);
+          
+          for (const tag of tagsToDelete) {
+            try {
+              console.log(`Deleting tag: ${tag.name}`);
+              await github.rest.git.deleteRef({
+                owner,
+                repo,
+                ref: `tags/${tag.name}`
+              });
+            } catch (error) {
+              console.log(`Could not delete tag ${tag.name}: ${error.message}`);
+            }
+          }
+          
+          console.log(`Deleted ${tagsToDelete.length} old tags`);
+          
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       
