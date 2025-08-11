@@ -337,6 +337,52 @@
     .btn-add:hover {
       background: #218838;
     }
+    .btn-test {
+      background: #17a2b8;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+      font-size: 14px;
+    }
+    .btn-test:hover {
+      background: #138496;
+    }
+    .btn-save {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-save:hover {
+      background: #218838;
+    }
+    .discord-guide {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #7289da;
+    }
+    .discord-guide h4 {
+      margin: 0 0 10px 0;
+      color: #495057;
+      font-size: 1em;
+    }
+    .discord-guide ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .discord-guide li {
+      margin-bottom: 5px;
+      font-size: 14px;
+      color: #6c757d;
+    }
     .default-table-setting {
       background-color: #e8f5e8;
       padding: 15px;
@@ -491,6 +537,35 @@
       </div>
       
       <div class="status" id="linkStatus"></div>
+    </div>
+
+    <div class="setting-group">
+      <h3>💬 Discord連携設定</h3>
+      <p>DiscordのWebhook URLを設定すると、Smart ViewからDiscordに統計情報を投稿できるようになります。</p>
+      
+      <div class="setting-item">
+        <label for="discordWebhookUrl">Discord Webhook URL:</label>
+        <input type="text" id="discordWebhookUrl" placeholder="例: https://discord.com/api/webhooks/1234567890/abcdefghijklmnop">
+        <small>DiscordサーバーのWebhook URLを入力してください</small>
+      </div>
+      
+      <div class="setting-item">
+        <button class="btn-test" id="testDiscordBtn">接続テスト</button>
+        <button class="btn-save" id="saveDiscordBtn">保存</button>
+      </div>
+      
+      <div class="status" id="discordStatus"></div>
+      
+      <div class="discord-guide">
+        <h4>📝 Discord Webhook URLの取得方法</h4>
+        <ol>
+          <li>Discordサーバーの設定 → 連携サービス → ウェブフック</li>
+          <li>「新しいウェブフック」をクリック</li>
+          <li>チャンネルと名前を設定</li>
+          <li>「ウェブフックURLをコピー」をクリック</li>
+          <li>コピーしたURLを上記フィールドに貼り付け</li>
+        </ol>
+      </div>
     </div>
 
     <div class="setting-group">

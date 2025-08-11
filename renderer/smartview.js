@@ -452,11 +452,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // シェアボタンのイベントリスナーを追加
     const shareBtn = document.getElementById('shareBtn');
-    shareBtn.addEventListener('click', () => {
-      // シェア機能の実装（今後拡張可能）
-      console.log('Share button clicked');
-      // TODO: シェア機能を実装
-    });
+    if (shareBtn) {
+      shareBtn.addEventListener('click', () => {
+        // シェア機能の実装（今後拡張可能）
+        console.log('Share button clicked');
+        // TODO: シェア機能を実装
+      });
+    }
+    
+    // Xボタンのイベントリスナーを追加
+    const xBtn = document.getElementById('xBtn');
+    if (xBtn) {
+      xBtn.addEventListener('click', async () => {
+        console.log('X button clicked');
+        try {
+          await handleXButtonClick(targetDate, songs, totalNotes);
+        } catch (error) {
+          console.error('Error in X button handler:', error);
+          alert('Xボタンの処理中にエラーが発生しました: ' + error.message);
+        }
+      });
+    }
+    
+    // Discordボタンのイベントリスナーを追加
+    const discordBtn = document.getElementById('discordBtn');
+    if (discordBtn) {
+      discordBtn.addEventListener('click', async () => {
+        console.log('Discord button clicked');
+        try {
+          await handleDiscordButtonClick(targetDate, songs, totalNotes);
+        } catch (error) {
+          console.error('Error in Discord button handler:', error);
+          alert('Discordボタンの処理中にエラーが発生しました: ' + error.message);
+        }
+      });
+    }
     
   } catch (error) {
     console.error('Error loading smart view data:', error);
@@ -464,3 +494,233 @@ document.addEventListener('DOMContentLoaded', async () => {
       '<div class="text-center py-4 text-red-500">データの読み込みに失敗しました</div>';
   }
 });
+
+// 統計情報を計算する関数
+function calculateStatsForTwitter(songs) {
+  if (!songs || songs.length === 0) {
+    return {
+      displayedSongsCount: 0,
+      hiddenSongs: 0,
+      unknownSongs: 0,
+      totalNotes: 0
+    };
+  }
+  
+  const displayedSongsCount = songs.length;
+  const hiddenSongs = 0; // Smart Viewでは統合楽曲の概念がない
+  const unknownSongs = 0; // Smart Viewでは不明楽曲の概念がない
+  const totalNotes = calculateTotalNotes(songs);
+  
+  return {
+    displayedSongsCount,
+    hiddenSongs,
+    unknownSongs,
+    totalNotes
+  };
+}
+
+// クリアランプとDJレベルの統計を計算する関数
+function calculateClearAndDjStats(songs) {
+  let djLevelCounts = { 'AAA': 0, 'AA': 0, 'A': 0, 'B': 0, 'C': 0, 'D': 0, 'E': 0, 'F': 0 };
+  let clearLampCounts = { 
+    'NO PLAY': 0, 
+    'FAILED': 0, 
+    'ASSIST EASY CLEAR': 0, 
+    'LIGHT ASSIST CLEAR': 0, 
+    'EASY CLEAR': 0, 
+    'CLEAR': 0, 
+    'HARD CLEAR': 0, 
+    'EX HARD CLEAR': 0, 
+    'FULL COMBO': 0,
+    'PERFECT': 0,
+    'MAX': 0
+  };
+  
+  if (!songs || songs.length === 0) {
+    return { djLevelCounts, clearLampCounts };
+  }
+  
+  songs.forEach(song => {
+    // DJレベルの統計
+    const djLevel = song.djLevel || 'F';
+    if (djLevelCounts.hasOwnProperty(djLevel)) {
+      djLevelCounts[djLevel]++;
+    }
+    
+    // クリアランプの統計
+    const clearTypeName = getClearTypeName(song.clear || 0);
+    if (clearLampCounts.hasOwnProperty(clearTypeName)) {
+      clearLampCounts[clearTypeName]++;
+    }
+  });
+  
+  return { djLevelCounts, clearLampCounts };
+}
+
+// Twitter投稿用のテキストを生成する関数（renderer.jsから移植）
+function generateTwitterText(date, stats, clearLampCounts, djLevelCounts) {
+  const displayedSongsCount = stats?.displayedSongsCount || 0;
+  const hiddenSongsCount = stats?.hiddenSongs || 0;
+  const unknownSongsCount = stats?.unknownSongs || 0;
+  const displayTotalNotes = stats?.totalNotes || 0;
+
+  // ランク分布の文字列を作成（上位のみ表示）
+  const djLevelDisplay = Object.entries(djLevelCounts)
+    .filter(([level, count]) => count > 0)
+    .slice(0, 5) // 上位5つまで
+    .map(([level, count]) => `${level}:${count}`)
+    .join(' ');
+
+  // ランプ分布の文字列を作成（重要なクリアのみ表示）
+  const clearLampOrder = ['FULL COMBO', 'EX HARD CLEAR', 'HARD CLEAR', 'CLEAR', 'EASY CLEAR'];
+  const clearLampDisplay = clearLampOrder
+    .filter(clearType => clearLampCounts[clearType] > 0)
+    .slice(0, 4) // 上位4つまで
+    .map(clearType => {
+      const shortNames = {
+        'FULL COMBO': 'FC',
+        'EX HARD CLEAR': 'EXH',
+        'HARD CLEAR': 'HARD',
+        'CLEAR': 'CLEAR',
+        'EASY CLEAR': 'EASY'
+      };
+      return `${shortNames[clearType]}:${clearLampCounts[clearType]}`;
+    })
+    .join(' ');
+
+  // Twitter投稿用テキストを生成
+  let twitterText = `📊 ${date}のプレイ記録\n\n`;
+  twitterText += `🎵更新楽曲数: ${displayedSongsCount}曲`;
+  
+  if (hiddenSongsCount > 0 || unknownSongsCount > 0) {
+    let hiddenInfo = [];
+    if (hiddenSongsCount > 0) hiddenInfo.push(`統合: +${hiddenSongsCount}曲`);
+    if (unknownSongsCount > 0) hiddenInfo.push(`Unknown: +${unknownSongsCount}曲`);
+    twitterText += ` (${hiddenInfo.join(', ')})`;
+  }
+  
+  twitterText += `\n🎹総ノーツ数: ${displayTotalNotes.toLocaleString()}ノーツ`;
+  
+  if (djLevelDisplay) {
+    twitterText += `\n🏆ランク分布: ${djLevelDisplay}`;
+  }
+  
+  if (clearLampDisplay) {
+    twitterText += `\n💡ランプ分布: ${clearLampDisplay}`;
+  }
+  
+  twitterText += `\n\n#BeatArchive`;
+  
+  return twitterText;
+}
+
+// Xボタンの処理を行う関数
+async function handleXButtonClick(targetDate, songs, totalNotes) {
+  console.log('Starting X button process...');
+  
+  try {
+    // 1. 統計情報を生成（SmartViewで表示している総ノーツ数を使用）
+    const stats = {
+      displayedSongsCount: songs ? songs.length : 0,
+      hiddenSongs: 0, // Smart Viewでは統合楽曲の概念がない
+      unknownSongs: 0, // Smart Viewでは不明楽曲の概念がない
+      totalNotes: totalNotes // SmartViewで表示している値を直接使用
+    };
+    
+    const { djLevelCounts, clearLampCounts } = calculateClearAndDjStats(songs);
+    const twitterText = generateTwitterText(formatDate(targetDate), stats, clearLampCounts, djLevelCounts);
+    
+    console.log('Generated Twitter text:', twitterText);
+    console.log('Using totalNotes from SmartView display:', totalNotes);
+    
+    // 2. スクリーンショット撮影とディレクトリ作成
+    console.log('Taking screenshots...');
+    const screenshotResult = await window.api.takeSmartViewScreenshots();
+    let screenshotDir;
+    
+    // 新しい形式（オブジェクト）か古い形式（文字列）かを判定
+    if (typeof screenshotResult === 'object' && screenshotResult.directory) {
+      screenshotDir = screenshotResult.directory;
+    } else {
+      screenshotDir = screenshotResult; // 文字列の場合（古い形式）
+    }
+    
+    console.log('Screenshots saved to:', screenshotDir);
+    
+    // 3. 統計情報をクリップボードにコピー
+    console.log('Copying to clipboard...');
+    await navigator.clipboard.writeText(twitterText);
+    console.log('Twitter text copied to clipboard');
+    
+    // 4. Xのページをブラウザで開く（テキストをURLパラメータに含める）
+    console.log('Opening X compose page...');
+    const encodedText = encodeURIComponent(twitterText);
+    const twitterUrl = `https://x.com/compose/tweet?text=${encodedText}`;
+    await window.api.openExternalUrl(twitterUrl);
+    
+    // 5. スクリーンショットディレクトリを開く
+    console.log('Opening screenshot directory...');
+    await window.api.openDirectory(screenshotDir);
+    
+    // 6. ダイアログでアナウンス
+    alert(`スクリーンショットを撮影しました！\n\n` +
+          `保存先: ${screenshotDir}\n\n` +
+          `Xの投稿ページに統計情報をコピーしました\n\n` +
+          `手動でスクリーンショットを添付して投稿してください。`);
+  } catch (error) {
+    console.error('X button error details:', error);
+    console.error('Error stack:', error.stack);
+    alert(`Xへの送信処理中にエラーが発生しました:\n\n` +
+          `エラー: ${error.message}\n\n` +
+          `詳細はコンソールログを確認してください。`);
+  }
+}
+
+// Discordボタンの処理を行う関数
+async function handleDiscordButtonClick(targetDate, songs, totalNotes) {
+  console.log('Starting Discord button process...');
+  
+  try {
+    // 1. Discord設定を確認
+    const config = await window.api.getConfig();
+    const webhookUrl = config.discordWebhookUrl;
+    
+    if (!webhookUrl || webhookUrl.trim() === '') {
+      alert('Discord Webhook URLが設定されていません。\n\n設定ページでWebhook URLを設定してください。');
+      return;
+    }
+    
+    // 2. 統計情報を生成
+    const stats = {
+      displayedSongsCount: songs ? songs.length : 0,
+      hiddenSongs: 0, // Smart Viewでは統合楽曲の概念がない
+      unknownSongs: 0, // Smart Viewでは不明楽曲の概念がない
+      totalNotes: totalNotes // SmartViewで表示している値を直接使用
+    };
+    
+    const { djLevelCounts, clearLampCounts } = calculateClearAndDjStats(songs);
+    const twitterText = generateTwitterText(formatDate(targetDate), stats, clearLampCounts, djLevelCounts);
+    
+    console.log('Generated Discord message text:', twitterText);
+    
+    // 3. スクリーンショット撮影
+    const screenshotResult = await window.api.takeSmartViewScreenshots();
+    console.log('Screenshots saved:', screenshotResult);
+    
+    // 4. Discordに送信
+    const result = await window.api.sendToDiscord(webhookUrl, twitterText, screenshotResult);
+    
+    if (result.success) {
+      // 5. 成功ダイアログ
+      alert(`Discordに送信完了しました！\n\n` +
+            `統計情報: ${stats.displayedSongsCount}曲 / ${totalNotes.toLocaleString()}ノーツ\n` +
+            `送信画像: ${result.imageCount}枚`);
+    } else {
+      throw new Error(result.error || 'Discord送信に失敗しました');
+    }
+    
+  } catch (error) {
+    console.error('Discord button error:', error);
+    alert(`Discord送信でエラーが発生しました:\n\n${error.message}\n\n設定を確認してください。`);
+  }
+}

@@ -27,5 +27,8 @@ contextBridge.exposeInMainWorld('api', {
   openDirectory: (directoryPath) => ipcRenderer.invoke('open-directory', directoryPath),
   smartViewWindow: () => ipcRenderer.invoke('smart-view-window'),
   saveSmartViewStats: (stats) => ipcRenderer.invoke('save-smart-view-stats', stats),
-  loadSmartViewStats: () => ipcRenderer.invoke('load-smart-view-stats')
+  loadSmartViewStats: () => ipcRenderer.invoke('load-smart-view-stats'),
+  takeSmartViewScreenshots: () => ipcRenderer.invoke('take-smartview-screenshots'),
+  openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', url),
+  sendToDiscord: (webhookUrl, message, screenshotDir) => ipcRenderer.invoke('send-to-discord', webhookUrl, message, screenshotDir)
 });

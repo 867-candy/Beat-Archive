@@ -8,7 +8,8 @@ const state = {
   },
   difficultyTables: [],
   defaultTableUrls: [], // 変更: 複数の難易度表URLを格納する配列
-  songLinkService: '' // 楽曲情報リンクサービス設定
+  songLinkService: '', // 楽曲情報リンクサービス設定
+  discordWebhookUrl: '' // Discord Webhook URL設定
 };
 
 // 設定を読み込み
@@ -18,6 +19,7 @@ async function loadSettings() {
     Object.assign(state.dbPaths, config.dbPaths);
     state.difficultyTables = config.difficultyTables || [];
     state.songLinkService = config.songLinkService || '';
+    state.discordWebhookUrl = config.discordWebhookUrl || '';
     
     // 旧設定形式との互換性を保つ
     if (config.defaultTableUrl && !config.defaultTableUrls) {
@@ -33,6 +35,7 @@ async function loadSettings() {
     updatePathDisplays();
     updateTableList();
     updateLinkServiceDisplay();
+    updateDiscordDisplay();
     setupEventListeners();
   } catch (error) {
     showStatus('設定の読み込みに失敗しました: ' + error.message, 'error');
@@ -880,6 +883,107 @@ async function saveLinkServiceSetting() {
     showLinkStatus('楽曲情報リンク設定を保存しました', 'success');
   } catch (error) {
     showLinkStatus('楽曲情報リンク設定の保存に失敗しました: ' + error.message, 'error');
+  }
+}
+
+// Discord設定表示を更新
+function updateDiscordDisplay() {
+  const discordWebhookUrl = document.getElementById('discordWebhookUrl');
+  if (discordWebhookUrl) {
+    discordWebhookUrl.value = state.discordWebhookUrl;
+    
+    // イベントリスナーを追加
+    const testBtn = document.getElementById('testDiscordBtn');
+    const saveBtn = document.getElementById('saveDiscordBtn');
+    
+    if (testBtn) {
+      testBtn.addEventListener('click', testDiscordConnection);
+    }
+    
+    if (saveBtn) {
+      saveBtn.addEventListener('click', saveDiscordSetting);
+    }
+  }
+}
+
+// Discord接続テスト
+async function testDiscordConnection() {
+  try {
+    const webhookUrl = document.getElementById('discordWebhookUrl').value.trim();
+    
+    if (!webhookUrl) {
+      showDiscordStatus('Webhook URLを入力してください', 'error');
+      return;
+    }
+    
+    if (!webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
+      showDiscordStatus('有効なDiscord Webhook URLを入力してください', 'error');
+      return;
+    }
+    
+    showDiscordStatus('接続テスト中...', 'info');
+    
+    // テストメッセージを送信
+    const testMessage = {
+      content: '🎵 Beat Archive - Discord連携テスト',
+      embeds: [{
+        title: '接続テスト成功！',
+        description: 'Discord Webhook URLが正しく設定されました。',
+        color: 0x00ff00,
+        timestamp: new Date().toISOString(),
+        footer: {
+          text: 'Beat Archive'
+        }
+      }]
+    };
+    
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(testMessage)
+    });
+    
+    if (response.ok) {
+      showDiscordStatus('✅ Discord接続テストが成功しました！', 'success');
+    } else {
+      const errorText = await response.text();
+      showDiscordStatus(`❌ Discord接続テストが失敗しました: ${response.status} - ${errorText}`, 'error');
+    }
+  } catch (error) {
+    showDiscordStatus(`❌ Discord接続テストでエラーが発生しました: ${error.message}`, 'error');
+  }
+}
+
+// Discord設定を保存
+async function saveDiscordSetting() {
+  try {
+    const webhookUrl = document.getElementById('discordWebhookUrl').value.trim();
+    state.discordWebhookUrl = webhookUrl;
+    
+    const config = await window.api.getConfig();
+    config.discordWebhookUrl = webhookUrl;
+    
+    await window.api.updateConfig(config);
+    showDiscordStatus('✅ Discord設定を保存しました', 'success');
+  } catch (error) {
+    showDiscordStatus(`❌ Discord設定の保存に失敗しました: ${error.message}`, 'error');
+  }
+}
+
+// Discordステータス表示
+function showDiscordStatus(message, type) {
+  const statusElement = document.getElementById('discordStatus');
+  statusElement.textContent = message;
+  statusElement.className = `status ${type}`;
+  statusElement.style.display = 'block';
+  
+  // 成功メッセージは3秒後に自動で非表示
+  if (type === 'success') {
+    setTimeout(() => {
+      statusElement.style.display = 'none';
+    }, 3000);
   }
 }
 

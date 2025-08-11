@@ -51,10 +51,10 @@ async function init() {
   document.getElementById('dateInput').value = today;
   console.log(`[デバッグ] 初期化完了 - 日付設定: ${today}`);
   
-  // スマートビューボタンのイベントリスナーを設定
-  const smartviewBtn = document.getElementById('smartviewBtn');
-  if (smartviewBtn) {
-    smartviewBtn.addEventListener('click', async () => {
+  // Shareボタンのイベントリスナーを設定
+  const shareBtn = document.getElementById('shareBtn');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
       try {
         await window.api.smartViewWindow();
       } catch (error) {
@@ -73,11 +73,22 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
   if (!date) {
     console.log('[デバッグ] 日付が選択されていません');
     list.innerHTML = '<li class="no-results">日付を選択してください</li>';
+    // Shareボタンを非表示
+    const shareBtn = document.getElementById('shareBtn');
+    if (shareBtn) {
+      shareBtn.style.display = 'none';
+    }
     return;
   }
   
   console.log(`[デバッグ] 日付: ${date} のデータを読み込み中...`);
   list.innerHTML = '<li class="loading">読み込み中...</li>';
+  
+  // 読み込み中はShareボタンを非表示
+  const shareBtn = document.getElementById('shareBtn');
+  if (shareBtn) {
+    shareBtn.style.display = 'none';
+  }
 
   try {
     const response = await window.api.getUpdatedSongs(date);
@@ -97,6 +108,11 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
     
     if (data.length === 0) {
       list.innerHTML = '<li class="no-results">この日に更新された譜面はありません</li>';
+      // データなし時はShareボタンを非表示
+      const shareBtn = document.getElementById('shareBtn');
+      if (shareBtn) {
+        shareBtn.style.display = 'none';
+      }
       return;
     }
     
@@ -408,8 +424,20 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
     statsElement.innerHTML = statsHtml;
     list.insertBefore(statsElement, list.firstChild);
     
+    // 読み込み成功後にShareボタンを表示
+    const shareBtn = document.getElementById('shareBtn');
+    if (shareBtn) {
+      shareBtn.style.display = 'flex';
+    }
+    
   } catch (e) {
     list.innerHTML = `<li style="color: #e74c3c; background: #fadbd8;">エラー: ${e.message}</li>`;
+    
+    // エラー時はShareボタンを非表示
+    const shareBtn = document.getElementById('shareBtn');
+    if (shareBtn) {
+      shareBtn.style.display = 'none';
+    }
   }
 });
 
@@ -587,186 +615,6 @@ document.getElementById('screenshotBtn').addEventListener('click', async () => {
   }
 });
 
-// Twitter投稿用のテキストを生成する関数
-function generateTwitterText(date, stats, clearLampCounts, djLevelCounts) {
-  const displayedSongsCount = stats?.displayedSongsCount || 0;
-  const hiddenSongsCount = stats?.hiddenSongs || 0;
-  const unknownSongsCount = stats?.unknownSongs || 0;
-  const displayTotalNotes = stats?.totalNotes || 0;
 
-  // ランク分布の文字列を作成（上位のみ表示）
-  const djLevelDisplay = Object.entries(djLevelCounts)
-    .filter(([level, count]) => count > 0)
-    .slice(0, 5) // 上位5つまで
-    .map(([level, count]) => `${level}:${count}`)
-    .join(' ');
-
-  // ランプ分布の文字列を作成（重要なクリアのみ表示）
-  const clearLampOrder = ['FULL COMBO', 'EX HARD CLEAR', 'HARD CLEAR', 'CLEAR', 'EASY CLEAR'];
-  const clearLampDisplay = clearLampOrder
-    .filter(clearType => clearLampCounts[clearType] > 0)
-    .slice(0, 4) // 上位4つまで
-    .map(clearType => {
-      const shortNames = {
-        'FULL COMBO': 'FC',
-        'EX HARD CLEAR': 'EXH',
-        'HARD CLEAR': 'HARD',
-        'CLEAR': 'CLEAR',
-        'EASY CLEAR': 'EASY'
-      };
-      return `${shortNames[clearType]}:${clearLampCounts[clearType]}`;
-    })
-    .join(' ');
-
-  // Twitter投稿用テキストを生成
-  let twitterText = `📊 ${date}のプレイ記録\n\n`;
-  twitterText += `🎵更新楽曲数: ${displayedSongsCount}曲`;
-  
-  if (hiddenSongsCount > 0 || unknownSongsCount > 0) {
-    let hiddenInfo = [];
-    if (hiddenSongsCount > 0) hiddenInfo.push(`統合: +${hiddenSongsCount}曲`);
-    if (unknownSongsCount > 0) hiddenInfo.push(`Unknown: +${unknownSongsCount}曲`);
-    twitterText += ` (${hiddenInfo.join(', ')})`;
-  }
-  
-  twitterText += `\n🎹総ノーツ数: ${displayTotalNotes.toLocaleString()}ノーツ`;
-  
-  if (djLevelDisplay) {
-    twitterText += `\n🏆ランク分布: ${djLevelDisplay}`;
-  }
-  
-  if (clearLampDisplay) {
-    twitterText += `\n💡ランプ分布: ${clearLampDisplay}`;
-  }
-  
-  twitterText += `\n\n#BeatArchive`;
-  
-  return twitterText;
-}
-
-// Twitter投稿機能
-document.getElementById('twitterBtn').addEventListener('click', async () => {
-  console.log('=== [デバッグ] Twitter投稿ボタンがクリックされました ===');
-  
-  const date = document.getElementById('dateInput').value;
-  if (!date) {
-    console.log('[デバッグ] 日付が選択されていません');
-    alert('日付を選択してください');
-    return;
-  }
-  
-  const songList = document.getElementById('songList');
-  if (songList.children.length === 0 || songList.querySelector('.no-results, .loading')) {
-    console.log('[デバッグ] 楽曲データが読み込まれていません');
-    alert('楽曲データを読み込んでからX投稿を行ってください');
-    return;
-  }
-  
-  console.log('[デバッグ] Twitter投稿処理を開始します');
-  
-  try {
-    // 最新の統計データを取得
-    const response = await window.api.getUpdatedSongs(date);
-    const data = response.songs || response;
-    const stats = response.stats || null;
-    
-    if (data.length === 0) {
-      alert('この日に更新された譜面がないため、X投稿できません');
-      return;
-    }
-    
-    // 統計データを再計算
-    let djLevelCounts = { 'AAA': 0, 'AA': 0, 'A': 0, 'B': 0, 'C': 0, 'D': 0, 'E': 0, 'F': 0 };
-    let clearLampCounts = { 
-      'NO PLAY': 0, 
-      'FAILED': 0, 
-      'ASSIST EASY CLEAR': 0, 
-      'LIGHT ASSIST CLEAR': 0, 
-      'EASY CLEAR': 0, 
-      'CLEAR': 0, 
-      'HARD CLEAR': 0, 
-      'EX HARD CLEAR': 0, 
-      'FULL COMBO': 0,
-      'PERFECT': 0,
-      'MAX': 0
-    };
-    
-    for (const song of data) {
-      const djLevel = song.djLevel || 'F';
-      const clearTypeName = song.clearTypeName || 'UNKNOWN';
-      
-      if (djLevelCounts.hasOwnProperty(djLevel)) {
-        djLevelCounts[djLevel]++;
-      }
-      if (clearLampCounts.hasOwnProperty(clearTypeName)) {
-        clearLampCounts[clearTypeName]++;
-      }
-    }
-    
-    // 統計情報を統合
-    const displayedSongsCount = data.length;
-    const hiddenSongsCount = stats ? stats.hiddenSongs : 0;
-    const unknownSongsCount = stats ? stats.unknownSongs : 0;
-    const displayTotalNotes = stats && stats.totalNotes ? stats.totalNotes : 0;
-    
-    const statsForTwitter = {
-      displayedSongsCount,
-      hiddenSongs: hiddenSongsCount,
-      unknownSongs: unknownSongsCount,
-      totalNotes: displayTotalNotes
-    };
-    
-    // Twitter投稿用テキストを生成
-    const twitterText = generateTwitterText(date, statsForTwitter, clearLampCounts, djLevelCounts);
-    
-    console.log('Twitter投稿用テキスト:', twitterText);
-    
-    // スクリーンショットのディレクトリを開く処理
-    try {
-      console.log(`[デバッグ] 最後のスクリーンショット情報を取得中...`);
-      const lastScreenshot = await window.api.getLastScreenshotPath();
-      console.log(`[Twitter投稿] 最後のスクリーンショット情報:`, lastScreenshot);
-      
-      if (lastScreenshot.directory) {
-        console.log(`[Twitter投稿] スクリーンショットディレクトリを開きます: ${lastScreenshot.directory}`);
-        
-        const openResult = await window.api.openDirectory(lastScreenshot.directory);
-        
-        if (openResult.success) {
-          console.log(`[Twitter投稿] ✅ ディレクトリを正常に開きました: ${lastScreenshot.directory}`);
-        } else {
-          console.warn(`[Twitter投稿] ❌ ディレクトリを開くことができませんでした: ${openResult.error}`);
-        }
-      } else {
-        console.log(`[Twitter投稿] ⚠️ スクリーンショットディレクトリが見つかりません`);
-      }
-    } catch (e) {
-      console.log(`[Twitter投稿] ⚠️ ディレクトリを開く処理でエラー: ${e.message}`);
-    }
-    
-    // Twitterの投稿ページを開く
-    const twitterResult = await window.api.openTwitterPost(twitterText);
-    if (twitterResult.success) {
-      const lastScreenshot = await window.api.getLastScreenshotPath();
-      const hasDirectory = lastScreenshot.directory && lastScreenshot.directory !== '';
-      
-      console.log(`[Twitter投稿完了] 投稿ページ表示成功`);
-      console.log(`[Twitter投稿完了] ディレクトリ情報: ${hasDirectory ? `利用可能 (${lastScreenshot.directory})` : '利用不可'}`);
-      
-      if (hasDirectory) {
-        alert(`Xの投稿ページを開きました。\n\nスクリーンショットが保存されたフォルダを開いています。\n\n投稿文は既に入力されています。\n画像をドラッグ&ドロップまたは手動で添付してから投稿してください。\n\nフォルダパス: ${lastScreenshot.directory}`);
-      } else {
-        alert('Xの投稿ページを開きました。\n投稿文は既に入力されています。\n\n画像を添付したい場合は、先にスクリーンショットを撮影してから再度Xに投稿してください。');
-      }
-    } else {
-      console.error(`[X投稿] ❌ 投稿ページ表示失敗: ${twitterResult.error}`);
-      alert(`X投稿ページの表示に失敗しました: ${twitterResult.error}`);
-    }
-    
-  } catch (error) {
-    console.error('Twitter投稿エラー:', error);
-    alert(`X投稿の準備中にエラーが発生しました: ${error.message}`);
-  }
-});
 
 init();

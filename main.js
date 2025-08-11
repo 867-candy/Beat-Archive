@@ -5,6 +5,8 @@ const sqlite3 = require('sqlite3').verbose();
 const dayjs = require('dayjs');
 const https = require('https');
 const http = require('http');
+const fetch = require('node-fetch');
+const FormData = require('form-data');
 
 // 難易度表データのキャッシュ
 let difficultyTablesCache = null;
@@ -3296,6 +3298,189 @@ ipcMain.handle('load-smart-view-stats', async () => {
   } catch (error) {
     console.error('Smart View統計情報の読み込みに失敗しました:', error);
     return null;
+  }
+});
+
+// Smart Viewスクリーンショット撮影機能
+ipcMain.handle('take-smartview-screenshots', async () => {
+  try {
+    const os = require('os');
+    const username = os.userInfo().username;
+    const screenshotDir = path.join('C:', 'Users', username, 'Pictures', 'Beat-Archive');
+    
+    // ディレクトリが存在しない場合は作成
+    if (!fs.existsSync(screenshotDir)) {
+      fs.mkdirSync(screenshotDir, { recursive: true });
+      console.log('スクリーンショットディレクトリを作成しました:', screenshotDir);
+    }
+    
+    // Smart Viewウィンドウを取得
+    const smartViewWindow = BrowserWindow.getAllWindows().find(win => 
+      win.webContents.getURL().includes('smartview.html')
+    );
+    
+    if (!smartViewWindow) {
+      throw new Error('Smart Viewウィンドウが見つかりません');
+    }
+    
+    // 現在の日付をファイル名に使用
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
+    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '');
+    
+    // 既存の同日のスクリーンショットを削除（上書き準備）
+    const existingFiles = fs.readdirSync(screenshotDir);
+    const sameDateFiles = existingFiles.filter(file => 
+      file.startsWith(`smartview_${dateStr}_`) && file.endsWith('.png')
+    );
+    
+    if (sameDateFiles.length > 0) {
+      console.log(`既存のスクリーンショット ${sameDateFiles.length} 枚を削除します:`, sameDateFiles);
+      sameDateFiles.forEach(file => {
+        const filePath = path.join(screenshotDir, file);
+        try {
+          fs.unlinkSync(filePath);
+          console.log(`削除完了: ${file}`);
+        } catch (error) {
+          console.error(`削除失敗: ${file}`, error);
+        }
+      });
+    }
+    
+    // ページネーション情報を取得するためにJavaScriptを実行
+    const paginationInfo = await smartViewWindow.webContents.executeJavaScript(`
+      (() => {
+        const totalPages = Math.ceil(filteredSongs.length / itemsPerPage);
+        return { currentPage, totalPages, itemsPerPage };
+      })()
+    `);
+    
+    console.log('Pagination info:', paginationInfo);
+    
+    const screenshotPaths = [];
+    
+    // 各ページのスクリーンショットを撮影
+    for (let page = 1; page <= paginationInfo.totalPages; page++) {
+      // ページを移動
+      await smartViewWindow.webContents.executeJavaScript(`
+        currentPage = ${page};
+        displayCurrentPage();
+      `);
+      
+      // ページの描画を待つ
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // スクリーンショットを撮影（上書き）
+      const filename = `smartview_${dateStr}_${timeStr}_page${page}.png`;
+      const filePath = path.join(screenshotDir, filename);
+      
+      const image = await smartViewWindow.capturePage();
+      fs.writeFileSync(filePath, image.toPNG());
+      
+      screenshotPaths.push(filePath);
+      console.log(`Page ${page} screenshot saved (overwrite): ${filePath}`);
+    }
+    
+    // 元のページに戻す（最初のページ）
+    await smartViewWindow.webContents.executeJavaScript(`
+      currentPage = 1;
+      displayCurrentPage();
+    `);
+    
+    console.log(`${screenshotPaths.length}枚のスクリーンショットを撮影しました（上書き保存）`);
+    return {
+      directory: screenshotDir,
+      filePaths: screenshotPaths
+    };
+    
+  } catch (error) {
+    console.error('Smart Viewスクリーンショット撮影エラー:', error);
+    throw error;
+  }
+});
+
+// 外部URLを開く機能
+ipcMain.handle('open-external-url', async (_, url) => {
+  try {
+    await shell.openExternal(url);
+    console.log('外部URLを開きました:', url);
+    return { success: true };
+  } catch (error) {
+    console.error('外部URL起動エラー:', error);
+    throw error;
+  }
+});
+
+// Discord送信機能
+ipcMain.handle('send-to-discord', async (_, webhookUrl, message, screenshotData) => {
+  try {
+    console.log('Discord送信開始:', { 
+      webhookUrl: webhookUrl.substring(0, 50) + '...', 
+      message: message.substring(0, 100) + '...', 
+      screenshotCount: screenshotData.filePaths ? screenshotData.filePaths.length : 0 
+    });
+    
+    // 撮影されたスクリーンショットファイルを使用
+    const screenshotPaths = screenshotData.filePaths || [];
+    
+    console.log('送信するスクリーンショット:', screenshotPaths.length, '枚');
+    
+    if (screenshotPaths.length === 0) {
+      throw new Error('送信するスクリーンショットファイルがありません');
+    }
+    
+    // FormDataを使用してマルチパート送信
+    const form = new FormData();
+    
+    // Discord Embed形式でメッセージを作成
+    const embedData = {
+      embeds: [{
+        title: '🎵 Beat Archive - プレイ記録',
+        description: message,
+        color: 0x7289da, // Discord blue
+        timestamp: new Date().toISOString(),
+        footer: {
+          text: 'Beat Archive Smart View'
+        }
+      }]
+    };
+    
+    form.append('payload_json', JSON.stringify(embedData));
+    
+    // スクリーンショットを添付（最大10枚まで）
+    const maxFiles = Math.min(screenshotPaths.length, 10);
+    for (let i = 0; i < maxFiles; i++) {
+      const filePath = screenshotPaths[i];
+      const fileName = path.basename(filePath);
+      const fileStream = fs.createReadStream(filePath);
+      form.append(`files[${i}]`, fileStream, fileName);
+    }
+    
+    // Discord WebhookにPOST送信
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      body: form,
+      headers: form.getHeaders()
+    });
+    
+    if (response.ok) {
+      console.log('Discord送信成功');
+      return {
+        success: true,
+        imageCount: maxFiles
+      };
+    } else {
+      const errorText = await response.text();
+      console.error('Discord送信失敗:', response.status, errorText);
+      throw new Error(`Discord送信失敗: ${response.status} - ${errorText}`);
+    }
+    
+  } catch (error) {
+    console.error('Discord送信エラー:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 });
 
