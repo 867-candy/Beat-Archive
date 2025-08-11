@@ -332,18 +332,6 @@ function applyFilter(songs, filterType) {
       });
     case 'miss-count':
       return songs.sort((a, b) => (a.minbp || 0) - (b.minbp || 0));
-    case 'level':
-      return songs.sort((a, b) => {
-        // 難易度表がある楽曲を優先して表示し、数値レベルで比較
-        const aHasTable = a.tableSymbol && a.tableSymbol !== '';
-        const bHasTable = b.tableSymbol && b.tableSymbol !== '';
-        
-        if (aHasTable && !bHasTable) return -1;
-        if (!aHasTable && bHasTable) return 1;
-        
-        // どちらも数値レベルで比較
-        return (b.level || 0) - (a.level || 0);
-      });
     default:
       return songs;
   }

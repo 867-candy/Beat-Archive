@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+# [1.1.9] - 2025-08-11
+
+### Added
+- SNS共有用のviewを追加
+- Discord投稿機能を追加
+
+### Changed
+- ディレクトリ構造を変更
+- X共有機能をSNS共有用に統合
+
+### Fixed
+- NO PLAYかつ初プレイ時にミスカウントの差分表示がおかしくなるバグを修正
+
 # [1.1.8] - 2025-08-08
 
 ### Added
