@@ -122,12 +122,21 @@ h3 {
 }
 
 .btn.share {
-  background: #e74c3c;
+  background: #10a4d1;
   display: none;
 }
 
 .btn.share:hover {
-  background: #c0392b;
+  background: #084a5e;
+}
+
+.btn.screenshot {
+  background: #9b59b6;
+  display: none;
+}
+
+.btn.screenshot:hover {
+  background: #8e44ad;
 }
 
 .btn img {

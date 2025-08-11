@@ -73,10 +73,14 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
   if (!date) {
     console.log('[デバッグ] 日付が選択されていません');
     list.innerHTML = '<li class="no-results">日付を選択してください</li>';
-    // Shareボタンを非表示
+    // Shareボタンとスクリーンショットボタンを非表示
     const shareBtn = document.getElementById('shareBtn');
     if (shareBtn) {
       shareBtn.style.display = 'none';
+    }
+    const screenshotBtn = document.getElementById('screenshotHeaderBtn');
+    if (screenshotBtn) {
+      screenshotBtn.style.display = 'none';
     }
     return;
   }
@@ -84,10 +88,14 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
   console.log(`[デバッグ] 日付: ${date} のデータを読み込み中...`);
   list.innerHTML = '<li class="loading">読み込み中...</li>';
   
-  // 読み込み中はShareボタンを非表示
+  // 読み込み中はShareボタンとスクリーンショットボタンを非表示
   const shareBtn = document.getElementById('shareBtn');
   if (shareBtn) {
     shareBtn.style.display = 'none';
+  }
+  const screenshotBtn = document.getElementById('screenshotHeaderBtn');
+  if (screenshotBtn) {
+    screenshotBtn.style.display = 'none';
   }
 
   try {
@@ -108,10 +116,14 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
     
     if (data.length === 0) {
       list.innerHTML = '<li class="no-results">この日に更新された譜面はありません</li>';
-      // データなし時はShareボタンを非表示
+      // データなし時はShareボタンとスクリーンショットボタンを非表示
       const shareBtn = document.getElementById('shareBtn');
       if (shareBtn) {
         shareBtn.style.display = 'none';
+      }
+      const screenshotBtn = document.getElementById('screenshotHeaderBtn');
+      if (screenshotBtn) {
+        screenshotBtn.style.display = 'none';
       }
       return;
     }
@@ -424,25 +436,33 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
     statsElement.innerHTML = statsHtml;
     list.insertBefore(statsElement, list.firstChild);
     
-    // 読み込み成功後にShareボタンを表示
+    // 読み込み成功後にShareボタンとスクリーンショットボタンを表示
     const shareBtn = document.getElementById('shareBtn');
     if (shareBtn) {
       shareBtn.style.display = 'flex';
+    }
+    const screenshotBtn = document.getElementById('screenshotHeaderBtn');
+    if (screenshotBtn) {
+      screenshotBtn.style.display = 'flex';
     }
     
   } catch (e) {
     list.innerHTML = `<li style="color: #e74c3c; background: #fadbd8;">エラー: ${e.message}</li>`;
     
-    // エラー時はShareボタンを非表示
+    // エラー時はShareボタンとスクリーンショットボタンを非表示
     const shareBtn = document.getElementById('shareBtn');
     if (shareBtn) {
       shareBtn.style.display = 'none';
     }
+    const screenshotBtn = document.getElementById('screenshotHeaderBtn');
+    if (screenshotBtn) {
+      screenshotBtn.style.display = 'none';
+    }
   }
 });
 
-// スクリーンショット機能
-document.getElementById('screenshotBtn').addEventListener('click', async () => {
+// ヘッダーのスクリーンショットボタン
+document.getElementById('screenshotHeaderBtn').addEventListener('click', async () => {
   console.log('=== [デバッグ] スクリーンショットボタンがクリックされました ===');
   
   const date = document.getElementById('dateInput').value;
@@ -460,11 +480,31 @@ document.getElementById('screenshotBtn').addEventListener('click', async () => {
   }
   
   try {
+    // スクリーンショット撮影中はボタンを非表示
+    const screenshotBtn = document.getElementById('screenshotHeaderBtn');
+    const shareBtn = document.getElementById('shareBtn');
+    
+    if (screenshotBtn) {
+      screenshotBtn.style.display = 'none';
+    }
+    if (shareBtn) {
+      shareBtn.style.display = 'none';
+    }
+    
     console.log('[デバッグ] ディレクトリ選択ダイアログを開きます');
     // ディレクトリ選択ダイアログを開く
     const directory = await window.api.selectDirectory();
     if (!directory) {
       console.log('[デバッグ] ディレクトリ選択がキャンセルされました');
+      
+      // キャンセル時はボタンを再表示
+      if (screenshotBtn) {
+        screenshotBtn.style.display = 'flex';
+      }
+      if (shareBtn) {
+        shareBtn.style.display = 'flex';
+      }
+      
       return; // ユーザーがキャンセルした場合
     }
     
@@ -595,6 +635,16 @@ document.getElementById('screenshotBtn').addEventListener('click', async () => {
       // スクリーンショット完了メッセージを表示
       alert(message);
       
+      // スクリーンショット完了後にボタンを再表示
+      const screenshotBtn = document.getElementById('screenshotHeaderBtn');
+      const shareBtn = document.getElementById('shareBtn');
+      if (screenshotBtn) {
+        screenshotBtn.style.display = 'flex';
+      }
+      if (shareBtn) {
+        shareBtn.style.display = 'flex';
+      }
+      
       // 最後のスクリーンショットパスをconfig に保存
       if (compressedImagePath) {
         console.log(`[デバッグ] 最後のスクリーンショットパスを保存: ${compressedImagePath}`);
@@ -607,14 +657,33 @@ document.getElementById('screenshotBtn').addEventListener('click', async () => {
       }
     } else {
       alert(`スクリーンショットの撮影中にエラーが発生しました: ${result.error}`);
+      
+      // エラー時にもボタンを再表示
+      const screenshotBtn = document.getElementById('screenshotHeaderBtn');
+      const shareBtn = document.getElementById('shareBtn');
+      if (screenshotBtn) {
+        screenshotBtn.style.display = 'flex';
+      }
+      if (shareBtn) {
+        shareBtn.style.display = 'flex';
+      }
     }
     
   } catch (error) {
     console.error('スクリーンショットエラー:', error);
     alert(`スクリーンショットの保存中にエラーが発生しました: ${error.message}`);
+    
+    // エラー時にもボタンを再表示
+    const screenshotBtn = document.getElementById('screenshotHeaderBtn');
+    const shareBtn = document.getElementById('shareBtn');
+    if (screenshotBtn) {
+      screenshotBtn.style.display = 'flex';
+    }
+    if (shareBtn) {
+      shareBtn.style.display = 'flex';
+    }
   }
 });
-
 
 
 init();

@@ -671,8 +671,7 @@ async function handleXButtonClick(targetDate, songs, totalNotes) {
     console.error('X button error details:', error);
     console.error('Error stack:', error.stack);
     alert(`Xへの送信処理中にエラーが発生しました:\n\n` +
-          `エラー: ${error.message}\n\n` +
-          `詳細はコンソールログを確認してください。`);
+          `エラー: ${error.message}\n\n` );
   }
 }
 
