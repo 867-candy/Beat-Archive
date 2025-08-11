@@ -618,6 +618,17 @@ function generateTwitterText(date, stats, clearLampCounts, djLevelCounts) {
 async function handleXButtonClick(targetDate, songs, totalNotes) {
   console.log('Starting X button process...');
   
+  // スクリーンショット撮影中はボタンを非表示
+  const xBtn = document.getElementById('xBtn');
+  const discordBtn = document.getElementById('discordBtn');
+  
+  if (xBtn) {
+    xBtn.style.display = 'none';
+  }
+  if (discordBtn) {
+    discordBtn.style.display = 'none';
+  }
+  
   try {
     // 1. 統計情報を生成（SmartViewで表示している総ノーツ数を使用）
     const stats = {
@@ -667,17 +678,45 @@ async function handleXButtonClick(targetDate, songs, totalNotes) {
           `保存先: ${screenshotDir}\n\n` +
           `Xの投稿ページに統計情報をコピーしました\n\n` +
           `手動でスクリーンショットを添付して投稿してください。`);
+    
+    // スクリーンショット完了後にボタンを再表示
+    if (xBtn) {
+      xBtn.style.display = 'flex';
+    }
+    if (discordBtn) {
+      discordBtn.style.display = 'flex';
+    }
+    
   } catch (error) {
     console.error('X button error details:', error);
     console.error('Error stack:', error.stack);
     alert(`Xへの送信処理中にエラーが発生しました:\n\n` +
           `エラー: ${error.message}\n\n` );
+    
+    // エラー時にもボタンを再表示
+    if (xBtn) {
+      xBtn.style.display = 'flex';
+    }
+    if (discordBtn) {
+      discordBtn.style.display = 'flex';
+    }
   }
 }
 
 // Discordボタンの処理を行う関数
 async function handleDiscordButtonClick(targetDate, songs, totalNotes) {
   console.log('Starting Discord button process...');
+  
+  // スクリーンショット撮影中はボタンを非表示
+  const xBtn = document.getElementById('xBtn');
+  const discordBtn = document.getElementById('discordBtn');
+  
+  if (xBtn) {
+    xBtn.style.display = 'none';
+  }
+  if (discordBtn) {
+    discordBtn.style.display = 'none';
+  }
   
   try {
     // 1. Discord設定を確認
@@ -686,6 +725,15 @@ async function handleDiscordButtonClick(targetDate, songs, totalNotes) {
     
     if (!webhookUrl || webhookUrl.trim() === '') {
       alert('Discord Webhook URLが設定されていません。\n\n設定ページでWebhook URLを設定してください。');
+      
+      // 設定エラー時にもボタンを再表示
+      if (xBtn) {
+        xBtn.style.display = 'flex';
+      }
+      if (discordBtn) {
+        discordBtn.style.display = 'flex';
+      }
+      
       return;
     }
     
@@ -718,8 +766,24 @@ async function handleDiscordButtonClick(targetDate, songs, totalNotes) {
       throw new Error(result.error || 'Discord送信に失敗しました');
     }
     
+    // Discord送信完了後にボタンを再表示
+    if (xBtn) {
+      xBtn.style.display = 'flex';
+    }
+    if (discordBtn) {
+      discordBtn.style.display = 'flex';
+    }
+    
   } catch (error) {
     console.error('Discord button error:', error);
     alert(`Discord送信でエラーが発生しました:\n\n${error.message}\n\n設定を確認してください。`);
+    
+    // エラー時にもボタンを再表示
+    if (xBtn) {
+      xBtn.style.display = 'flex';
+    }
+    if (discordBtn) {
+      discordBtn.style.display = 'flex';
+    }
   }
 }
