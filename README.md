@@ -20,19 +20,19 @@ Beat-Archive/
 │   ├── windows/        # ウィンドウごとのディレクトリ
 │   │   ├── main/       # メインウィンドウ
 │   │   │   ├── index.html    # メイン画面HTML
-│   │   │   ├── renderer.js   # メイン画面JS
+│   │   │   ├── main-window.js   # メイン画面JS
 │   │   │   └── styles.css    # メイン画面専用CSS
 │   │   ├── settings/   # 設定ウィンドウ
 │   │   │   ├── settings.html # 設定画面HTML
-│   │   │   ├── renderer.js   # 設定画面JS
+│   │   │   ├── settings-window.js   # 設定画面JS
 │   │   │   └── styles.css    # 設定画面専用CSS
 │   │   ├── smartview/  # スマートビューウィンドウ
 │   │   │   ├── smartview.html # スマートビューHTML
-│   │   │   ├── renderer.js    # スマートビューJS
+│   │   │   ├── smartview-window.js    # スマートビューJS
 │   │   │   └── styles.css     # スマートビュー専用CSS
 │   │   └── clearlamp/  # クリアランプウィンドウ
 │   │       ├── clearlamp.html # クリアランプHTML
-│   │       ├── renderer.js    # クリアランプJS
+│   │       ├── clearlamp-window.js    # クリアランプJS
 │   │       └── styles.css     # クリアランプ専用CSS
 │   └── preload.js      # Electronプリロードスクリプト
 ├── sample-db/          # サンプルデータベース
