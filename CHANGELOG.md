@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - MAX-表記の追加 (main,smart-view,clearlamp)
+- アイコンの追加
 
 ### Changed
 - PERFECTの色を変更
