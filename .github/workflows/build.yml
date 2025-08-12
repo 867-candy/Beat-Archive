@@ -2,7 +2,7 @@ name: Build Beat Archive
 
 on:
   push:
-    branches: [ main, master ]
+    branches: []
   release:
     types: [ published ]
 
