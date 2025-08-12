@@ -1,3 +1,23 @@
+// ランク詳細表示用のCSSスタイルを追加
+function addRankDetailStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .rank-detail {
+      font-size: 0.75em;
+      color: #666;
+      white-space: nowrap;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// ページ読み込み時にスタイルを適用
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', addRankDetailStyles);
+} else {
+  addRankDetailStyles();
+}
+
 const state = {
   difficultyTables: [],
   selectedTableData: null,
@@ -10,6 +30,116 @@ const state = {
   songLinkService: 'none', // 楽曲リンクサービス設定
   urlCache: new Map() // URL生成キャッシュ
 };
+
+// ランク差分表示を生成する関数
+function formatRankDifferences(scoreData) {
+  if (!scoreData || !scoreData.notes || !scoreData.score) {
+    return '';
+  }
+  
+  const iidxScore = scoreData.score;
+  const iidxMaxScore = scoreData.notes * 2; // 満点は全ノーツPG（2点）
+  
+  if (iidxMaxScore === 0) {
+    return '';
+  }
+  
+  const rate = iidxScore / iidxMaxScore;
+  
+  // 18段階のランク基準（上位から順番に）
+  const rankThresholds = [
+    { level: 18, name: 'MAX', threshold: 1.0 },           // 満点
+    { level: 17, name: 'MAX', threshold: 17/18 },         // 17/18以上
+    { level: 16, name: 'AAA', threshold: 16/18 },         // 16/18以上
+    { level: 15, name: 'AAA', threshold: 15/18 },         // 15/18以上
+    { level: 14, name: 'AA', threshold: 14/18 },          // 14/18以上
+    { level: 13, name: 'AA', threshold: 13/18 },          // 13/18以上
+    { level: 12, name: 'A', threshold: 12/18 },           // 12/18以上
+    { level: 11, name: 'A', threshold: 11/18 },           // 11/18以上
+    { level: 10, name: 'B', threshold: 10/18 },           // 10/18以上
+    { level: 9, name: 'B', threshold: 9/18 },             // 9/18以上
+    { level: 8, name: 'C', threshold: 8/18 },             // 8/18以上
+    { level: 7, name: 'C', threshold: 7/18 },             // 7/18以上
+    { level: 6, name: 'D', threshold: 6/18 },             // 6/18以上
+    { level: 5, name: 'D', threshold: 5/18 },             // 5/18以上
+    { level: 4, name: 'E', threshold: 4/18 },             // 4/18以上
+    { level: 3, name: 'E', threshold: 3/18 },             // 3/18以上
+    { level: 2, name: 'F', threshold: 2/18 },             // 2/18以上
+    { level: 1, name: 'F', threshold: 1/18 },             // 1/18以上
+    { level: 0, name: 'F', threshold: 0 }                 // 0以上
+  ];
+  
+  // 8等分されたランク基準（従来のDJ LEVEL）
+  const basicRankThresholds = [
+    { name: 'AAA', threshold: 8/9 },  // 8/9以上
+    { name: 'AA', threshold: 7/9 },   // 7/9以上
+    { name: 'A', threshold: 6/9 },    // 6/9以上
+    { name: 'B', threshold: 5/9 },    // 5/9以上
+    { name: 'C', threshold: 4/9 },    // 4/9以上
+    { name: 'D', threshold: 3/9 },    // 3/9以上
+    { name: 'E', threshold: 2/9 },    // 2/9以上
+    { name: 'F', threshold: 0 }       // 0以上
+  ];
+  
+  // 現在のランクを特定（18段階）
+  let currentRank = rankThresholds[rankThresholds.length - 1]; // デフォルトはF
+  for (const rank of rankThresholds) {
+    if (rate >= rank.threshold) {
+      currentRank = rank;
+      break;
+    }
+  }
+  
+  // 8等分ランクでの現在のランクを特定
+  let basicCurrentRank = basicRankThresholds[basicRankThresholds.length - 1]; // デフォルトはF
+  for (const rank of basicRankThresholds) {
+    if (rate >= rank.threshold) {
+      basicCurrentRank = rank;
+      break;
+    }
+  }
+  
+  // 満点の場合
+  if (rate >= 1.0) {
+    const aaaThresholdScore = Math.ceil(iidxMaxScore * (8/9));
+    const aaaPlus = iidxScore - aaaThresholdScore;
+    return `MAX<br><span class="rank-detail">MAX-0 / AAA+${Math.abs(aaaPlus)}</span>`;
+  }
+  
+  // 次の上位ランクを探す（18段階）
+  let nextRank = null;
+  for (let i = 0; i < rankThresholds.length; i++) {
+    if (rankThresholds[i].level === currentRank.level && i > 0) {
+      nextRank = rankThresholds[i - 1];
+      break;
+    }
+  }
+  
+  if (!nextRank) {
+    // すでに最高レベルの場合（満点）
+    const aaaThresholdScore = Math.ceil(iidxMaxScore * (8/9));
+    const aaaPlus = iidxScore - aaaThresholdScore;
+    return `MAX<br><span class="rank-detail">MAX-0 / AAA+${Math.abs(aaaPlus)}</span>`;
+  }
+  
+  // 次のランクまでに必要なスコア差を計算（18段階）
+  const nextTargetScore = Math.ceil(iidxMaxScore * nextRank.threshold);
+  const nextScoreDifference = nextTargetScore - iidxScore;
+  
+  // 8等分ランクの基準点からの+を計算
+  const basicRankThresholdScore = Math.ceil(iidxMaxScore * basicCurrentRank.threshold);
+  const basicRankPlus = iidxScore - basicRankThresholdScore;
+  
+  // 次のランクの記号を決定
+  let nextRankSymbol = '';
+  if (currentRank.level % 2 === 1) {
+    nextRankSymbol = '+'; // 奇数レベルは+
+  } else {
+    nextRankSymbol = '-'; // 偶数レベルは-
+  }
+  
+  return `${basicCurrentRank.name}<br><span class="rank-detail">${nextRank.name}${nextRankSymbol}${Math.abs(nextScoreDifference)} / ${basicCurrentRank.name}+${Math.abs(basicRankPlus)}</span>`;
+}
 
 // 楽曲リンクURL生成関数
 async function generateSongUrl(song, linkService) {
@@ -485,7 +615,8 @@ async function loadSongScores() {
             beatorajaScore: scoreData ? scoreData.beatorajaScore : 0, // beatorajaスコアレート
             lastPlayed: scoreData ? scoreData.lastPlayed : null, // 最終プレイ
             cachedUrl: cachedUrl, // 事前生成されたURL
-            originalIndex: index // 元の順序を保持
+            originalIndex: index, // 元の順序を保持
+            scoreData: scoreData || null // スコアデータ全体を保存
           });
         } catch (scoreError) {
           console.error(`Error getting score for ${song.title}:`, scoreError);
@@ -621,7 +752,8 @@ async function loadSongScores() {
                 beatorajaScore: scoreData ? scoreData.beatorajaScore : 0,
                 lastPlayed: scoreData ? scoreData.lastPlayed : null,
                 cachedUrl: cachedUrl3, // 事前生成されたURL
-                originalIndex: globalIndex // 元の順序を保持
+                originalIndex: globalIndex, // 元の順序を保持
+                scoreData: scoreData || null // スコアデータ全体を保存
               });
               globalIndex++;
             }
@@ -693,7 +825,8 @@ async function loadSongScores() {
                 beatorajaScore: scoreData ? scoreData.beatorajaScore : 0,
                 lastPlayed: scoreData ? scoreData.lastPlayed : null,
                 cachedUrl: cachedUrl4, // 事前生成されたURL
-                originalIndex: globalIndex // 元の順序を保持
+                originalIndex: globalIndex, // 元の順序を保持
+                scoreData: scoreData // 計算用のデータ
               });
               globalIndex++;
             }
@@ -816,7 +949,7 @@ function updateChart() {
     6: '#ffa2a2', // HARD CLEAR - 赤
     7: '#ffd230', // EX HARD CLEAR - 黄
     8: '#66E7F8', // FULL COMBO - シアン
-    9: '#85FAC0', // PERFECT - 緑系
+    9: '#D2FFE8', // PERFECT - 緑系
     10: '#F3E8FF'  // MAX - 薄紫
   };
   
@@ -1120,7 +1253,7 @@ async function updateSongTable() {
           <th class="misscount-cell sortable ${state.sortColumn === 'misscount' ? 'sorted-' + state.sortDirection : ''}" data-column="misscount">
             MISS
           </th>
-          <th class="score-cell sortable ${state.sortColumn === 'score' ? 'sorted-' + state.sortDirection : ''}" data-column="score">スコア</th>
+          <th class="score-cell sortable ${state.sortColumn === 'score' ? 'sorted-' + state.sortDirection : ''}" data-column="score">EX</th>
           <th class="djlevel-cell sortable ${state.sortColumn === 'djlevel' ? 'sorted-' + state.sortDirection : ''}" data-column="djlevel">
            ランク
           </th>
@@ -1128,7 +1261,7 @@ async function updateSongTable() {
             レート
           </th>
           <th class="lastplayed-cell sortable ${state.sortColumn === 'lastplayed' ? 'sorted-' + state.sortDirection : ''}" data-column="lastplayed">
-            最終プレイ
+            最終<br />プレイ
           </th>
         </tr>
       </thead>
@@ -1154,6 +1287,9 @@ async function updateSongTable() {
     const lastPlayed = song.lastPlayed ? new Date(song.lastPlayed * 1000).toLocaleDateString('ja-JP') : '-';
     const clearClass = getClearClass(clearType);
     
+    // 高度なランク表示を生成
+    const rankDisplay = song.scoreData ? formatRankDifferences(song.scoreData) : djLevel;
+    
     // レベル表示用のシンボル取得
     const levelSymbol = state.selectedTableData?.header?.symbol || null;
     const displayLevel = levelSymbol ? `${levelSymbol}${song.level}` : song.level.toString();
@@ -1173,7 +1309,7 @@ async function updateSongTable() {
         <td class="clear-cell">${escapeHtml(getClearTypeName(clearType))}</td>
         <td class="misscount-cell">${missCount}</td>
         <td class="score-cell">${score.toLocaleString()}</td>
-        <td class="djlevel-cell">${escapeHtml(djLevel)}</td>
+        <td class="djlevel-cell">${rankDisplay}</td>
         <td class="scorerate-cell">${beatorajaScore}</td>
         <td class="lastplayed-cell">${lastPlayed}</td>
       </tr>

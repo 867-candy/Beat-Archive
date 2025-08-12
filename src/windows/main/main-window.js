@@ -18,7 +18,7 @@ function getClearTypeColor(clearTypeName) {
     'HARD CLEAR': '#FF6666',
     'EX HARD CLEAR': '#FFFF99',
     'FULL COMBO': '#66E7F8',
-    'PERFECT': '#85FAC0',
+    'PERFECT': '#D2FFE8',
     'MAX': '#F3E8FF'
   };
   
@@ -280,7 +280,7 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
           'HARD CLEAR': '#FF6666',
           'EX HARD CLEAR': '#FFFF99',
           'FULL COMBO': '#66E7F8',
-          'PERFECT': '#85FAC0',
+          'PERFECT': '#D2FFE8',
           'MAX': '#F3E8FF'
         };
         

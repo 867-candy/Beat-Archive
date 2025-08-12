@@ -13,6 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+# [1.1.11] - 2025-08-11
+
+### Added
+- MAX-表記の追加 (main,smart-view,clearlamp)
+
+### Changed
+- PERFECTの色を変更
+
+### Fixed
+-
+- 
+
 # [1.1.10] - 2025-08-11
 
 ### Added
