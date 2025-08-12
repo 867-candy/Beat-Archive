@@ -103,7 +103,7 @@ function formatRankDifferences(scoreData) {
   if (rate >= 1.0) {
     const aaaThresholdScore = Math.ceil(iidxMaxScore * (8/9));
     const aaaPlus = iidxScore - aaaThresholdScore;
-    return `MAX<br><span class="rank-detail">MAX-0 / AAA+${Math.abs(aaaPlus)}</span>`;
+    return `MAX<br><span class="rank-detail">MAX-0/AAA+${Math.abs(aaaPlus)}</span>`;
   }
   
   // 次の上位ランクを探す（18段階）
@@ -119,7 +119,7 @@ function formatRankDifferences(scoreData) {
     // すでに最高レベルの場合（満点）
     const aaaThresholdScore = Math.ceil(iidxMaxScore * (8/9));
     const aaaPlus = iidxScore - aaaThresholdScore;
-    return `MAX<br><span class="rank-detail">MAX-0 / AAA+${Math.abs(aaaPlus)}</span>`;
+    return `MAX<br><span class="rank-detail">MAX-0/AAA+${Math.abs(aaaPlus)}</span>`;
   }
   
   // 次のランクまでに必要なスコア差を計算（18段階）
@@ -132,13 +132,16 @@ function formatRankDifferences(scoreData) {
   
   // 次のランクの記号を決定
   let nextRankSymbol = '';
-  if (currentRank.level % 2 === 1) {
+  if (currentRank.level == 17){
+     nextRankSymbol = '-';
+  }
+  else if (currentRank.level % 2 === 1) {
     nextRankSymbol = '+'; // 奇数レベルは+
   } else {
     nextRankSymbol = '-'; // 偶数レベルは-
   }
   
-  return `${basicCurrentRank.name}<br><span class="rank-detail">${nextRank.name}${nextRankSymbol}${Math.abs(nextScoreDifference)} / ${basicCurrentRank.name}+${Math.abs(basicRankPlus)}</span>`;
+  return `${basicCurrentRank.name}<br><span class="rank-detail">${nextRank.name}${nextRankSymbol}${Math.abs(nextScoreDifference)}/${basicCurrentRank.name}+${Math.abs(basicRankPlus)}</span>`;
 }
 
 // 楽曲リンクURL生成関数
