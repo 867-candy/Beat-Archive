@@ -118,6 +118,101 @@ function getDifficultyName(song) {
   return diffMap[song.playmode] || 'UNKNOWN';
 }
 
+// ランク差分表示を生成する関数（main-windowと共通）
+function formatRankDifferences(iidxScore, iidxMaxScore, currentDjLevel) {
+  if (!iidxMaxScore || iidxMaxScore === 0) {
+    return '';
+  }
+  
+  const rate = iidxScore / iidxMaxScore;
+  
+  // 18段階のランク基準（上位から順番に）
+  const rankThresholds = [
+    { level: 18, name: 'MAX', threshold: 1.0, sign: '-' },         // 満点
+    { level: 17, name: 'MAX', threshold: 17/18, sign: '-' },       // 17/18以上
+    { level: 16, name: 'AAA', threshold: 16/18, sign: '+' },       // 16/18以上
+    { level: 15, name: 'AAA', threshold: 15/18, sign: '-' },       // 15/18以上
+    { level: 14, name: 'AA', threshold: 14/18, sign: '+' },        // 14/18以上
+    { level: 13, name: 'AA', threshold: 13/18, sign: '-' },        // 13/18以上
+    { level: 12, name: 'A', threshold: 12/18, sign: '+' },         // 12/18以上
+    { level: 11, name: 'A', threshold: 11/18, sign: '-' },         // 11/18以上
+    { level: 10, name: 'B', threshold: 10/18, sign: '+' },         // 10/18以上
+    { level: 9, name: 'B', threshold: 9/18, sign: '-' },           // 9/18以上
+    { level: 8, name: 'C', threshold: 8/18, sign: '+' },           // 8/18以上
+    { level: 7, name: 'C', threshold: 7/18, sign: '-' },           // 7/18以上
+    { level: 6, name: 'D', threshold: 6/18, sign: '+' },           // 6/18以上
+    { level: 5, name: 'D', threshold: 5/18, sign: '-' },           // 5/18以上
+    { level: 4, name: 'E', threshold: 4/18, sign: '+' },           // 4/18以上
+    { level: 3, name: 'E', threshold: 3/18, sign: '-' },           // 3/18以上
+    { level: 2, name: 'F', threshold: 2/18, sign: '+' },           // 2/18以上
+    { level: 1, name: 'F', threshold: 1/18, sign: '-' },           // 1/18以上
+    { level: 0, name: 'F', threshold: 0, sign: '+' }               // 0以上
+  ];
+  
+  // 8等分されたランク基準（従来のDJ LEVEL）
+  const basicRankThresholds = [
+    { name: 'AAA', threshold: 8/9 },  // 8/9以上
+    { name: 'AA', threshold: 7/9 },   // 7/9以上
+    { name: 'A', threshold: 6/9 },    // 6/9以上
+    { name: 'B', threshold: 5/9 },    // 5/9以上
+    { name: 'C', threshold: 4/9 },    // 4/9以上
+    { name: 'D', threshold: 3/9 },    // 3/9以上
+    { name: 'E', threshold: 2/9 },    // 2/9以上
+    { name: 'F', threshold: 0 }       // 0以上
+  ];
+  
+  // 現在のランクを特定（18段階）
+  let currentRank = rankThresholds[rankThresholds.length - 1]; // デフォルトはF
+  for (const rank of rankThresholds) {
+    if (rate >= rank.threshold) {
+      currentRank = rank;
+      break;
+    }
+  }
+  
+  // 8等分ランクでの現在のランクを特定
+  let basicCurrentRank = basicRankThresholds[basicRankThresholds.length - 1]; // デフォルトはF
+  for (const rank of basicRankThresholds) {
+    if (rate >= rank.threshold) {
+      basicCurrentRank = rank;
+      break;
+    }
+  }
+  
+  // 満点の場合
+  if (rate >= 1.0) {
+    const aaaThresholdScore = Math.ceil(iidxMaxScore * (8/9));
+    const aaaPlus = iidxScore - aaaThresholdScore;
+    return `MAX - 0 / AAA + ${Math.abs(aaaPlus)}`;
+  }
+  
+  // 次の上位ランクを探す（18段階）
+  let nextRank = null;
+  for (let i = 0; i < rankThresholds.length; i++) {
+    if (rankThresholds[i].level === currentRank.level && i > 0) {
+      nextRank = rankThresholds[i - 1];
+      break;
+    }
+  }
+  
+  if (!nextRank) {
+    // すでに最高レベルの場合（満点）
+    const aaaThresholdScore = Math.ceil(iidxMaxScore * (8/9));
+    const aaaPlus = iidxScore - aaaThresholdScore;
+    return `MAX - 0 / AAA + ${Math.abs(aaaPlus)}`;
+  }
+  
+  // 次のランクまでに必要なスコア差を計算（18段階）
+  const nextTargetScore = Math.ceil(iidxMaxScore * nextRank.threshold);
+  const nextScoreDifference = nextTargetScore - iidxScore;
+  
+  // 8等分ランクの基準点からの+を計算
+  const basicRankThresholdScore = Math.ceil(iidxMaxScore * basicCurrentRank.threshold);
+  const basicRankPlus = iidxScore - basicRankThresholdScore;
+  
+  return `${nextRank.name} ${nextRank.sign} ${Math.abs(nextScoreDifference)} / ${basicCurrentRank.name} + ${Math.abs(basicRankPlus)}`;
+}
+
 // 楽曲アイテムを作成する関数
 function createSongItem(song, index) {
   const currentLamp = getClearLampInfo(song.clear);
@@ -160,6 +255,9 @@ function createSongItem(song, index) {
 
   // スコアレートを計算
   const scoreRate = beatorajaScore ? Math.round(beatorajaScore) : 0;
+  
+  // ランク差分表示を生成
+  const rankDifferenceDisplay = formatRankDifferences(iidxScore, iidxMaxScore, djLevel);
   
   // 更新差分情報を取得
   const scoreUpdate = song.updates ? song.updates.find(u => u.type === 'daily_score') : null;
@@ -246,7 +344,7 @@ function createSongItem(song, index) {
           <span class="text-xs text-muted-foreground">
             <span class="mx-0.5">/</span>${iidxMaxScore}
           <span class="font-medium">(${scoreRate}%)</span>
-          <span class="ml-1">${djLevel}</span>
+          <span class="ml-1">${rankDifferenceDisplay}</span>
           </span>
         </div>
         <div class="text-sm text-muted-foreground">
