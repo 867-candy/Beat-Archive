@@ -42,6 +42,7 @@
   "build": {
     "appId": "com.beat-archive.app",
     "productName": "Beat Archive",
+    "icon": "app-icon.ico",
     "directories": {
       "output": "dist"
     },
@@ -51,6 +52,7 @@
       "src/windows/**/*",
       "src/common/**/*",
       "config-build.json",
+      "app-icon.ico",
       "node_modules/**/*",
       "!debug",
       "!test",
@@ -58,6 +60,7 @@
       "!src/debug"
     ],
     "win": {
+      "icon": "app-icon.ico",
       "target": [
         {
           "target": "portable",

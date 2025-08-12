@@ -1570,6 +1570,7 @@ function createWindow() {
     width: 1060,
     height: 1000,
     autoHideMenuBar: true, // メニューバーを自動的に隠す
+    icon: path.join(__dirname, 'app-icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'src', 'preload.js')
     }
@@ -1583,6 +1584,7 @@ function createSmartViewWindow() {
     width: 600,
     height: 900,
     autoHideMenuBar: true,
+    icon: path.join(__dirname, 'app-icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'src', 'preload.js')
     },
