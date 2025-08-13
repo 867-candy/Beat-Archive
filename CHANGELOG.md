@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+# [1.1.12] - 2025-08-11
+
+### Added
+- 
+- 
+
+### Changed
+- 
+
+### Fixed
+- クリア状況一覧でMAX-と表示されるべきところをMAX+となる不具合を修正
+- 
+
 # [1.1.11] - 2025-08-11
 
 ### Added
