@@ -5,12 +5,12 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "cross-env NODE_ENV=development electron .",
-    "debug": "cross-env NODE_ENV=development electron . --inspect=5858",
-    "build": "electron-builder",
+    "dev": "set NODE_ENV=development && electron .",
+    "debug": "set NODE_ENV=development && electron . --inspect=5858",
+    "build": "electron-builder --win",
     "build:win": "electron-builder --win",
     "dist": "npm run build",
-    "package": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"sample-db|config.json|local-data.db|debug|test|testdata|src/debug\" --executable-name=\"Beat-Archive-Portable\"",
+    "package": "electron-packager . --platform=win32 --arch=x64 --out=dist --icon=app.ico --overwrite --ignore=\"sample-db|config.json|local-data.db|debug|test|testdata|src/debug\" --executable-name=\"Beat-Archive\"",
     "version:patch": "npm version patch && git push origin main && git push origin --tags",
     "version:minor": "npm version minor && git push origin main && git push origin --tags",
     "version:major": "npm version major && git push origin main && git push origin --tags",
@@ -29,12 +29,10 @@
     "dayjs": "^1.11.13",
     "form-data": "^4.0.4",
     "node-fetch": "^2.7.0",
-    "sharp": "^0.34.3",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "@electron/packager": "^18.4.0",
-    "cross-env": "^10.0.0",
+    "@electron/packager": "^18.4.1",
     "electron": "^37.2.5",
     "electron-builder": "^26.0.12",
     "electron-builder-squirrel-windows": "^26.0.12"
@@ -42,7 +40,7 @@
   "build": {
     "appId": "com.beat-archive.app",
     "productName": "Beat Archive",
-    "icon": "app-icon.ico",
+    "icon": "app.ico",
     "directories": {
       "output": "dist"
     },
@@ -52,7 +50,7 @@
       "src/windows/**/*",
       "src/common/**/*",
       "config-build.json",
-      "app-icon.ico",
+      "app.ico",
       "node_modules/**/*",
       "!debug",
       "!test",
@@ -60,16 +58,23 @@
       "!src/debug"
     ],
     "win": {
-      "icon": "app-icon.ico",
+      "icon": "app.ico",
       "target": [
         {
           "target": "portable",
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         }
       ],
-      "forceCodeSigning": false
+      "forceCodeSigning": false,
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     }
   }
 }
