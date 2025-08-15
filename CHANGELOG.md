@@ -13,6 +13,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+
+# [1.2.0] - 2025-08-15
+
+### Added
+- 難易度表の一括インポート機能を追加
+- 
+
+### Changed
+- 難易度表をローカルファイルとして保存する機能を追加
+- 更新曲一覧,クリアランプでローカルファイルを使用するように変更
+
+### Fixed
+- 
+- 
+
+
 # [1.1.12] - 2025-08-14
 
 ### Added
