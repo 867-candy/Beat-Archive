@@ -273,18 +273,22 @@ async function addTable() {
   try {
     showTableStatus('難易度表データを読み込み中...', 'info');
     const tableData = await window.api.loadDifficultyTable(url);
-    if (tableData && tableData.header && tableData.header.name) {
-      name = tableData.header.name;
+    
+    // ヘッダーから名前を取得（優先順位: header.name -> header.symbol -> URLから推測）
+    name = tableData.header?.name || tableData.header?.symbol;
+    
+    if (name) {
       showTableStatus('難易度表の名前を自動取得しました', 'success');
     } else {
-      showTableStatus('難易度表から名前を取得できませんでした', 'error');
-      urlEl.focus();
-      return;
+      // ヘッダーから名前が取得できない場合、URLから推測
+      name = extractTableNameFromUrl(url);
+      showTableStatus('URLから難易度表の名前を推測しました', 'info');
     }
   } catch (error) {
-    showTableStatus('難易度表の読み込みに失敗しました: ' + error.message, 'error');
-    urlEl.focus();
-    return;
+    console.error('難易度表の読み込みエラー:', error);
+    // エラーが発生した場合でもURLから名前を推測して処理を続行
+    name = extractTableNameFromUrl(url);
+    showTableStatus('難易度表の読み込みに失敗しましたが、URLから名前を推測して追加します', 'warning');
   }
   
   // 最後尾の優先度を取得して+1
@@ -765,6 +769,14 @@ function setupEventListeners() {
       await addTable();
     });
   }
+
+  // config_sys.jsonインポートボタン
+  const importBtn = document.getElementById('importConfigBtn');
+  if (importBtn) {
+    importBtn.addEventListener('click', async () => {
+      await importFromConfigSys();
+    });
+  }
   
   // フォーム入力フィールドのEnterキー処理
   const formFields = ['tableUrl'];
@@ -999,3 +1011,162 @@ async function cacheDifficultyTable(tableUrl, tableName) {
   }
 }
 */
+
+// config_sys.jsonから難易度表をインポート
+async function importFromConfigSys() {
+  try {
+    showTableStatus('config_sys.jsonファイルを選択してください...', 'info');
+    
+    // ファイル選択と読み込み
+    const result = await window.api.selectAndReadConfigSys();
+    if (!result) {
+      showTableStatus('ファイル選択がキャンセルされました', 'info');
+      return;
+    }
+    
+    const { tableURLs, filePath } = result;
+    
+    showTableStatus(`${tableURLs.length}個の難易度表URLを検出しました...`, 'info');
+    
+    let successCount = 0;
+    let skippedCount = 0;
+    
+    // 各URLを順番に処理
+    for (let i = 0; i < tableURLs.length; i++) {
+      const url = tableURLs[i];
+      
+      showTableStatus(`処理中... (${i + 1}/${tableURLs.length}): ${url}`, 'info');
+      
+      // すでに登録されているかチェック
+      const exists = state.difficultyTables.some(table => table.url === url);
+      if (exists) {
+        console.log(`スキップ（既存）: ${url}`);
+        skippedCount++;
+        continue;
+      }
+      
+      try {
+        // 難易度表データを取得してテーブル名を取得
+        const tableData = await window.api.loadDifficultyTable(url);
+        
+        // ヘッダーから名前を取得（優先順位: header.name -> header.symbol -> URLから推測）
+        let tableName = tableData.header?.name || tableData.header?.symbol;
+        
+        if (!tableName) {
+          // ヘッダーから名前が取得できない場合、URLから推測
+          tableName = extractTableNameFromUrl(url);
+        }
+        
+        // 新しい難易度表を追加
+        const newTable = {
+          url: url,
+          name: tableName,
+          priority: state.difficultyTables.length
+        };
+        
+        state.difficultyTables.push(newTable);
+        successCount++;
+        
+        console.log(`追加成功: ${tableName} (${url})`);
+        
+      } catch (error) {
+        console.error(`テーブル追加エラー (${url}):`, error);
+        // エラーでも処理を続行
+        
+        // URLから名前を推測して追加
+        const tableName = extractTableNameFromUrl(url);
+        const newTable = {
+          url: url,
+          name: tableName,
+          priority: state.difficultyTables.length
+        };
+        
+        state.difficultyTables.push(newTable);
+        successCount++;
+      }
+    }
+    
+    // 設定を保存
+    if (successCount > 0) {
+      try {
+        const newConfig = createConfigObject();
+        await window.api.updateConfig(newConfig);
+        updateTableList();
+        
+        const message = `インポート完了: ${successCount}個追加, ${skippedCount}個スキップ`;
+        showTableStatus(message, 'success');
+        
+      } catch (saveError) {
+        showTableStatus(`設定の保存に失敗しました: ${saveError.message}`, 'error');
+      }
+    } else {
+      showTableStatus('新しく追加された難易度表はありませんでした', 'info');
+    }
+    
+  } catch (error) {
+    console.error('config_sys.jsonインポートエラー:', error);
+    showTableStatus(`インポートエラー: ${error.message}`, 'error');
+  }
+}
+
+// URLから難易度表の名前を推測する関数
+function extractTableNameFromUrl(url) {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname;
+    const pathname = urlObj.pathname;
+    
+    // ドメイン名から推測するパターン
+    const domainMap = {
+      'stellabms.xyz': 'Stella',
+      'miraiscarlet.github.io': 'Genocide',
+      'rattoto10.jounin.jp': 'Insane',
+      'mocha-repository.info': 'LN',
+      'verticalsub.web.fc2.com': 'VerticalSub',
+      'fhyu6872.github.io': 'S-ranlovers',
+      '867-candy.github.io': 'EATorDIE',
+      'lets-go-time-hell.github.io': 'Time Hell',
+      'wrench616.github.io': 'Delay',
+      'egret9.github.io': 'Scramble'
+    };
+    
+    // ドメイン名による名前の推測
+    if (domainMap[hostname]) {
+      // パス名からより具体的な名前を取得
+      if (pathname.includes('sl')) return 'Stella SL';
+      if (pathname.includes('fr')) return 'Stella FR';
+      if (pathname.includes('st')) return 'Stella ST';
+      if (pathname.includes('rec')) return 'Stella SL Rec';
+      if (pathname.includes('genocide')) return 'Genocide Insane';
+      if (pathname.includes('insane')) return 'Insane';
+      if (pathname.includes('ln')) return 'LN Table';
+      if (pathname.includes('ranlovers')) return 'S-ranlovers';
+      if (pathname.includes('EATorDIE')) return 'EATorDIE Human';
+      if (pathname.includes('Arm-Shougakkou')) return 'Arm Shougakkou';
+      if (pathname.includes('code-stream')) return 'Code Stream';
+      if (pathname.includes('Delay')) return 'Delay';
+      if (pathname.includes('Scramble')) return 'Scramble';
+      
+      return domainMap[hostname];
+    }
+    
+    // パス名から名前を推測
+    const pathParts = pathname.split('/').filter(part => part.length > 0);
+    if (pathParts.length > 0) {
+      const lastPart = pathParts[pathParts.length - 1];
+      // 拡張子を除去
+      const nameWithoutExt = lastPart.replace(/\.(html?|json)$/i, '');
+      if (nameWithoutExt && nameWithoutExt !== 'table' && nameWithoutExt !== 'index') {
+        return nameWithoutExt.charAt(0).toUpperCase() + nameWithoutExt.slice(1);
+      }
+    }
+    
+    // 最後の手段: ホスト名を使用
+    return hostname.split('.')[0].charAt(0).toUpperCase() + hostname.split('.')[0].slice(1);
+  } catch (error) {
+    console.error('URL解析エラー:', error);
+    // URLが不正な場合は、そのまま文字列として処理
+    const parts = url.split('/').filter(part => part.length > 0);
+    return parts.length > 0 ? parts[parts.length - 1] : 'Unknown Table';
+  }
+}

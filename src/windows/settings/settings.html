@@ -90,6 +90,17 @@
           <button class="btn-add" id="addTableBtn">追加</button>
         </div>
       </div>
+
+      <div class="import-config-form">
+        <h4>config_sys.jsonから難易度表をインポート</h4>
+        <p>beatorajaのconfig_sys.jsonファイルからtableURLを読み込んで一括で追加できます。</p>
+        <div class="form-row">
+          <button class="btn-import" id="importConfigBtn">config_sys.jsonを選択してインポート</button>
+        </div>
+        <div class="file-info">
+          <small>beatoraja/config_sys.jsonファイルを選択してください。ファイル内のtableURL配列が読み込まれ、難易度表として追加されます。</small>
+        </div>
+      </div>
       
       <div class="status" id="tableStatus"></div>
     </div>

@@ -2180,6 +2180,39 @@ ipcMain.handle('file-exists', (_, filePath) => {
   return fs.existsSync(filePath);
 });
 
+// config_sys.jsonファイル選択と読み込み
+ipcMain.handle('select-and-read-config-sys', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [{ name: 'JSON Files', extensions: ['json'] }],
+    title: 'config_sys.jsonファイルを選択してください'
+  });
+  
+  if (result.canceled) {
+    return null;
+  }
+  
+  const filePath = result.filePaths[0];
+  
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const configSys = JSON.parse(content);
+    
+    // tableURLが存在するかチェック
+    if (!configSys.tableURL || !Array.isArray(configSys.tableURL)) {
+      throw new Error('config_sys.jsonにtableURL配列が見つかりません');
+    }
+    
+    return {
+      tableURLs: configSys.tableURL,
+      filePath: filePath
+    };
+  } catch (error) {
+    console.error('config_sys.json読み込みエラー:', error);
+    throw error;
+  }
+});
+
 // 確認ダイアログ（Electronの既知の不具合回避のため）
 ipcMain.handle('show-confirm-dialog', async (_, message, title = '確認') => {
   const result = await dialog.showMessageBox({
