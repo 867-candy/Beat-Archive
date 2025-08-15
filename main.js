@@ -2145,8 +2145,15 @@ ipcMain.handle('get-updated-songs', async (_, dateString) => {
 ipcMain.handle('get-config', () => config);
 
 ipcMain.handle('update-config', (_, newConfig) => {
+  console.log('update-configが呼ばれました');
+  console.log('受信したnewConfig:', JSON.stringify(newConfig, null, 2));
+  console.log('現在のconfig:', JSON.stringify(config, null, 2));
+  
   Object.assign(config, newConfig);
+  console.log('マージ後のconfig:', JSON.stringify(config, null, 2));
+  
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  console.log('config.jsonに書き込み完了:', configPath);
 });
 
 ipcMain.handle('set-config', (_, newPaths) => {
@@ -2210,6 +2217,145 @@ ipcMain.handle('select-and-read-config-sys', async () => {
   } catch (error) {
     console.error('config_sys.json読み込みエラー:', error);
     throw error;
+  }
+});
+
+// 難易度表のheaderとdataをローカル保存
+ipcMain.handle('save-difficulty-table-data', async (_, tableUrl, headerData, bodyData) => {
+  try {
+    // 保存先ディレクトリの作成
+    const tablesDir = path.join(app.getPath('userData'), 'difficulty-tables');
+    if (!fs.existsSync(tablesDir)) {
+      fs.mkdirSync(tablesDir, { recursive: true });
+    }
+    
+    // URLからファイル名を生成（安全な文字のみ使用）
+    const urlHash = require('crypto').createHash('md5').update(tableUrl).digest('hex');
+    const headerPath = path.join(tablesDir, `${urlHash}_header.json`);
+    const dataPath = path.join(tablesDir, `${urlHash}_data.json`);
+    
+    // ファイルに保存
+    fs.writeFileSync(headerPath, JSON.stringify(headerData, null, 2));
+    fs.writeFileSync(dataPath, JSON.stringify(bodyData, null, 2));
+    
+    console.log(`難易度表データを保存しました: ${tableUrl}`);
+    console.log(`Header: ${headerPath}`);
+    console.log(`Data: ${dataPath}`);
+    
+    return {
+      success: true,
+      headerPath: headerPath,
+      dataPath: dataPath,
+      urlHash: urlHash
+    };
+  } catch (error) {
+    console.error('難易度表データ保存エラー:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// ローカル保存された難易度表データの読み込み
+ipcMain.handle('load-saved-difficulty-table', async (_, tableUrl) => {
+  try {
+    const tablesDir = path.join(app.getPath('userData'), 'difficulty-tables');
+    const urlHash = require('crypto').createHash('md5').update(tableUrl).digest('hex');
+    const headerPath = path.join(tablesDir, `${urlHash}_header.json`);
+    const dataPath = path.join(tablesDir, `${urlHash}_data.json`);
+    
+    if (!fs.existsSync(headerPath) || !fs.existsSync(dataPath)) {
+      throw new Error('保存されたデータが見つかりません');
+    }
+    
+    const headerData = JSON.parse(fs.readFileSync(headerPath, 'utf8'));
+    const bodyData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    
+    return {
+      success: true,
+      header: headerData,
+      body: bodyData
+    };
+  } catch (error) {
+    console.error('保存された難易度表データ読み込みエラー:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// 保存された難易度表データが存在するかチェック
+ipcMain.handle('check-saved-difficulty-table', async (_, tableUrl) => {
+  try {
+    const tablesDir = path.join(app.getPath('userData'), 'difficulty-tables');
+    const urlHash = require('crypto').createHash('md5').update(tableUrl).digest('hex');
+    const headerPath = path.join(tablesDir, `${urlHash}_header.json`);
+    const dataPath = path.join(tablesDir, `${urlHash}_data.json`);
+    
+    const exists = fs.existsSync(headerPath) && fs.existsSync(dataPath);
+    
+    return {
+      exists: exists,
+      headerPath: exists ? headerPath : null,
+      dataPath: exists ? dataPath : null,
+      urlHash: urlHash
+    };
+  } catch (error) {
+    console.error('保存済み難易度表データチェックエラー:', error);
+    return {
+      exists: false,
+      error: error.message
+    };
+  }
+});
+
+// 保存済み難易度表データの削除
+ipcMain.handle('delete-saved-difficulty-table', async (_, tableUrl) => {
+  try {
+    const tablesDir = path.join(app.getPath('userData'), 'difficulty-tables');
+    const urlHash = require('crypto').createHash('md5').update(tableUrl).digest('hex');
+    const headerPath = path.join(tablesDir, `${urlHash}_header.json`);
+    const dataPath = path.join(tablesDir, `${urlHash}_data.json`);
+    
+    let deletedFiles = [];
+    let errors = [];
+    
+    // ヘッダーファイルを削除
+    if (fs.existsSync(headerPath)) {
+      try {
+        fs.unlinkSync(headerPath);
+        deletedFiles.push(headerPath);
+        console.log(`削除完了: ${headerPath}`);
+      } catch (error) {
+        errors.push(`ヘッダーファイル削除エラー: ${error.message}`);
+      }
+    }
+    
+    // データファイルを削除
+    if (fs.existsSync(dataPath)) {
+      try {
+        fs.unlinkSync(dataPath);
+        deletedFiles.push(dataPath);
+        console.log(`削除完了: ${dataPath}`);
+      } catch (error) {
+        errors.push(`データファイル削除エラー: ${error.message}`);
+      }
+    }
+    
+    return {
+      success: errors.length === 0,
+      deletedFiles: deletedFiles,
+      errors: errors,
+      urlHash: urlHash
+    };
+  } catch (error) {
+    console.error('保存済み難易度表データ削除エラー:', error);
+    return {
+      success: false,
+      errors: [error.message]
+    };
   }
 });
 

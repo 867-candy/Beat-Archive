@@ -43,6 +43,7 @@ jspm_packages/
 sample-db/
 dist/
 sample-screen-shot/
+renderer/
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 

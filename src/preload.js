@@ -31,5 +31,9 @@ contextBridge.exposeInMainWorld('api', {
   takeSmartViewScreenshots: () => ipcRenderer.invoke('take-smartview-screenshots'),
   openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', url),
   sendToDiscord: (webhookUrl, message, screenshotDir) => ipcRenderer.invoke('send-to-discord', webhookUrl, message, screenshotDir),
-  selectAndReadConfigSys: () => ipcRenderer.invoke('select-and-read-config-sys')
+  selectAndReadConfigSys: () => ipcRenderer.invoke('select-and-read-config-sys'),
+  saveDifficultyTableData: (tableUrl, headerData, bodyData) => ipcRenderer.invoke('save-difficulty-table-data', tableUrl, headerData, bodyData),
+  loadSavedDifficultyTable: (tableUrl) => ipcRenderer.invoke('load-saved-difficulty-table', tableUrl),
+  checkSavedDifficultyTable: (tableUrl) => ipcRenderer.invoke('check-saved-difficulty-table', tableUrl),
+  deleteSavedDifficultyTable: (tableUrl) => ipcRenderer.invoke('delete-saved-difficulty-table', tableUrl)
 });
