@@ -2651,6 +2651,50 @@ ipcMain.handle('load-difficulty-table', async (_, tableUrl) => {
   try {
     console.log(`Loading difficulty table from: ${tableUrl}`);
     
+    // 📁 ローカルファイル対応: configから該当する難易度表の設定を検索
+    let localHeader = null;
+    let localData = null;
+    
+    try {
+      // configが未読み込みの場合は読み込む
+      if (!config) {
+        loadConfig();
+      }
+      
+      const tableConfig = config.difficultyTables?.find(table => table.url === tableUrl);
+      
+      if (tableConfig && tableConfig.savedFiles && 
+          tableConfig.savedFiles.headerPath && tableConfig.savedFiles.dataPath) {
+        console.log(`📁 Checking local files for ${tableConfig.name}:`);
+        console.log(`  Header: ${tableConfig.savedFiles.headerPath}`);
+        console.log(`  Data: ${tableConfig.savedFiles.dataPath}`);
+        
+        try {
+          if (fs.existsSync(tableConfig.savedFiles.headerPath) && fs.existsSync(tableConfig.savedFiles.dataPath)) {
+            console.log('✅ Loading from local files');
+            localHeader = JSON.parse(fs.readFileSync(tableConfig.savedFiles.headerPath, 'utf8'));
+            localData = JSON.parse(fs.readFileSync(tableConfig.savedFiles.dataPath, 'utf8'));
+            console.log(`🎯 Local data loaded: ${localData.length} charts from ${tableConfig.name}`);
+            
+            return {
+              header: localHeader,
+              body: localData
+            };
+          } else {
+            console.log('❌ Local files not found, falling back to network');
+          }
+        } catch (localError) {
+          console.error('❌ Error reading local files:', localError);
+          console.log('🌐 Falling back to network loading');
+        }
+      } else {
+        console.log('🌐 No local files configured, using network');
+      }
+    } catch (configError) {
+      console.error('⚠️ Error loading config for local file check:', configError);
+      console.log('🌐 Proceeding with network loading');
+    }
+    
     let jsonUrl;
     
     // URLが直接JSONファイルを指しているかチェック
