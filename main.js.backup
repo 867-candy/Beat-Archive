@@ -760,86 +760,27 @@ async function loadSelectedDifficultyTables(config) {
   
   for (const tableConfig of selectedTableConfigs) {
     try {
-      let header;
-      let data; 
-      let usedLocalFiles = false;
+      console.log(`Loading selected table: ${tableConfig.name} from ${tableConfig.url}`);
       
-      // 🔍 ローカル保存ファイルをチェック
-      const savedFiles = tableConfig.savedFiles;
-      if (savedFiles && savedFiles.headerPath && savedFiles.dataPath) {
-        console.log(`📁 Checking local files for ${tableConfig.name}:`);
-        console.log(`  Header: ${savedFiles.headerPath}`);
-        console.log(`  Data: ${savedFiles.dataPath}`);
+      let headerUrl = tableConfig.url;
+      let header;
+      
+      // URLが直接JSONファイルを指しているかチェック
+      if (tableConfig.url.endsWith('.json')) {
+        console.log('Direct JSON URL detected');
+        headerUrl = tableConfig.url;
+        header = await fetchJson(headerUrl);
+      } else if (tableConfig.url.endsWith('/')) {
+        // ディレクトリURLの場合、header.jsonを自動補完
+        console.log('Directory URL detected, trying header.json');
+        headerUrl = tableConfig.url + 'header.json';
         
         try {
-          if (fs.existsSync(savedFiles.headerPath) && fs.existsSync(savedFiles.dataPath)) {
-            console.log(`✅ Loading ${tableConfig.name} from local files`);
-            header = JSON.parse(fs.readFileSync(savedFiles.headerPath, 'utf8'));
-            data = JSON.parse(fs.readFileSync(savedFiles.dataPath, 'utf8'));
-            usedLocalFiles = true;
-            console.log(`🎯 Local data loaded: ${data.length} charts`);
-          } else {
-            console.log(`⚠️ Local files not found for ${tableConfig.name}, falling back to network`);
-          }
-        } catch (localError) {
-          console.log(`❌ Error reading local files for ${tableConfig.name}: ${localError.message}`);
-          console.log(`🌐 Falling back to network loading`);
-        }
-      }
-      
-      if (!usedLocalFiles) {
-        console.log(`Loading selected table: ${tableConfig.name} from ${tableConfig.url}`);
-        
-        let headerUrl = tableConfig.url;
-        
-        // URLが直接JSONファイルを指しているかチェック
-        if (tableConfig.url.endsWith('.json')) {
-          console.log('Direct JSON URL detected');
-          headerUrl = tableConfig.url;
           header = await fetchJson(headerUrl);
-        } else if (tableConfig.url.endsWith('/')) {
-          // ディレクトリURLの場合、header.jsonを自動補完
-          console.log('Directory URL detected, trying header.json');
-          headerUrl = tableConfig.url + 'header.json';
-          
-          try {
-            header = await fetchJson(headerUrl);
-            console.log('Header loaded successfully from auto-completed URL');
-          } catch (autoError) {
-            console.log(`Auto-completion failed: ${autoError.message}, falling back to HTML parsing`);
-            // HTMLページの場合の処理にフォールバック
-            const html = await fetchHtml(tableConfig.url);
-            headerUrl = extractJsonUrlFromHtml(html, tableConfig.url);
-            console.log(`Extracted JSON URL from HTML: ${headerUrl}`);
-            
-            // ヘッダー情報を取得（複数パターンを試行）
-            const headerPatterns = [
-              headerUrl,
-              constructJsonUrl('header.json', tableConfig.url),
-              constructJsonUrl('table.json', tableConfig.url),
-              constructJsonUrl('index.json', tableConfig.url),
-              constructJsonUrl('data/header.json', tableConfig.url),
-              constructJsonUrl('json/header.json', tableConfig.url)
-            ];
-            
-            for (const headerPattern of headerPatterns) {
-              try {
-                console.log(`Trying header pattern: ${headerPattern}`);
-                header = await fetchJson(headerPattern);
-                console.log(`Header loaded successfully from: ${headerPattern}`);
-                break;
-              } catch (headerError) {
-                console.log(`Failed to load header from ${headerPattern}: ${headerError.message}`);
-                continue;
-              }
-            }
-            
-            if (!header) {
-              throw new Error(`Failed to load header for ${tableConfig.name} from any pattern`);
-            }
-          }
-        } else {
-          // HTMLページの場合、metaタグからJSONのURLを抽出
+          console.log('Header loaded successfully from auto-completed URL');
+        } catch (autoError) {
+          console.log(`Auto-completion failed: ${autoError.message}, falling back to HTML parsing`);
+          // HTMLページの場合の処理にフォールバック
           const html = await fetchHtml(tableConfig.url);
           headerUrl = extractJsonUrlFromHtml(html, tableConfig.url);
           console.log(`Extracted JSON URL from HTML: ${headerUrl}`);
@@ -870,73 +811,100 @@ async function loadSelectedDifficultyTables(config) {
             throw new Error(`Failed to load header for ${tableConfig.name} from any pattern`);
           }
         }
-        console.log(`Header loaded successfully. Name: ${header.name}, Symbol: ${header.symbol}, Data URL: ${header.data_url}`);
+      } else {
+        // HTMLページの場合、metaタグからJSONのURLを抽出
+        const html = await fetchHtml(tableConfig.url);
+        headerUrl = extractJsonUrlFromHtml(html, tableConfig.url);
+        console.log(`Extracted JSON URL from HTML: ${headerUrl}`);
         
-        // データ部を取得
-        const dataUrl = header.data_url;
-        console.log(`Fetching data from: ${dataUrl}`);
+        // ヘッダー情報を取得（複数パターンを試行）
+        const headerPatterns = [
+          headerUrl,
+          constructJsonUrl('header.json', tableConfig.url),
+          constructJsonUrl('table.json', tableConfig.url),
+          constructJsonUrl('index.json', tableConfig.url),
+          constructJsonUrl('data/header.json', tableConfig.url),
+          constructJsonUrl('json/header.json', tableConfig.url)
+        ];
         
-        // data_urlが相対パスの場合、ベースURLと結合
-        let fullDataUrl = dataUrl;
-        if (!dataUrl.startsWith('http://') && !dataUrl.startsWith('https://')) {
+        for (const headerPattern of headerPatterns) {
           try {
-            const base = new URL(headerUrl);
-            fullDataUrl = new URL(dataUrl, base.origin + base.pathname.replace(/\/[^\/]*$/, '/')).toString();
-            console.log(`Converted relative data URL to: ${fullDataUrl}`);
-          } catch (error) {
-            console.log(`Data URL conversion failed: ${error.message}`);
-            // フォールバック：単純な文字列結合
-            const baseDir = headerUrl.replace(/\/[^\/]*$/, '/');
-            fullDataUrl = baseDir + dataUrl.replace('./', '');
-            console.log(`Fallback data URL: ${fullDataUrl}`);
+            console.log(`Trying header pattern: ${headerPattern}`);
+            header = await fetchJson(headerPattern);
+            console.log(`Header loaded successfully from: ${headerPattern}`);
+            break;
+          } catch (headerError) {
+            console.log(`Failed to load header from ${headerPattern}: ${headerError.message}`);
+            continue;
           }
         }
         
-        // データを取得（Google Scriptsの場合は複数パターンを試行）
-        if (fullDataUrl.includes('script.google') || fullDataUrl.includes('script.googleusercontent.com')) {
-          console.log('Google Scripts URL detected, trying multiple patterns...');
-          
-          // Google ScriptsのURLパターンを複数試行
-          const scriptId = extractScriptId(fullDataUrl);
-          const googlePatternsToTry = [
-            fullDataUrl, // 元のURL
-            fullDataUrl.replace('script.googleusercontent.com', 'script.google.com'), // スクリプトURLに変更
-            fullDataUrl.replace('script.google.com', 'script.googleusercontent.com'), // ユーザーコンテンツURLに変更
-            // exec形式への変換を試行
-            fullDataUrl.replace(/macros\/echo\?.*/, 'macros/s/' + scriptId + '/exec'),
-            // Web app形式への変換を試行
-            `https://script.google.com/macros/s/${scriptId}/exec`,
-            `https://script.googleusercontent.com/macros/s/${scriptId}/exec`,
-            // Dev形式も試行
-            `https://script.google.com/macros/s/${scriptId}/dev`
-          ];
-          
-          // 重複を除去
-          const uniquePatterns = [...new Set(googlePatternsToTry)];
-          
-          for (const googleUrl of uniquePatterns) {
-            try {
-              console.log(`Trying Google Scripts URL: ${googleUrl}`);
-              data = await fetchJson(googleUrl);
-              console.log(`Successfully fetched data from: ${googleUrl}`);
-              break;
-            } catch (googleError) {
-              console.log(`Failed to fetch from ${googleUrl}: ${googleError.message}`);
-              if (googleUrl === uniquePatterns[uniquePatterns.length - 1]) {
-                throw new Error(`Failed to fetch Google Scripts data from all patterns: ${uniquePatterns.join(', ')}`);
-              }
-              continue;
-            }
-          }
-        } else {
-          // 通常のURL
-          data = await fetchJson(fullDataUrl);
+        if (!header) {
+          throw new Error(`Failed to load header for ${tableConfig.name} from any pattern`);
         }
-      } // end of !usedLocalFiles check
+      }
+      console.log(`Header loaded successfully. Name: ${header.name}, Symbol: ${header.symbol}, Data URL: ${header.data_url}`);
       
-      // ローカルファイル使用時の追加ログ - TARGET_FUNCTION_MARKER - UNIQUE_ID_123
-      if (!usedLocalFiles) {
-        console.log(`📊 Network data loaded: ${data ? data.length : 0} charts`);
+      // データ部を取得
+      const dataUrl = header.data_url;
+      console.log(`Fetching data from: ${dataUrl}`);
+      
+      // data_urlが相対パスの場合、ベースURLと結合
+      let fullDataUrl = dataUrl;
+      if (!dataUrl.startsWith('http://') && !dataUrl.startsWith('https://')) {
+        try {
+          const base = new URL(headerUrl);
+          fullDataUrl = new URL(dataUrl, base.origin + base.pathname.replace(/\/[^\/]*$/, '/')).toString();
+          console.log(`Converted relative data URL to: ${fullDataUrl}`);
+        } catch (error) {
+          console.log(`Data URL conversion failed: ${error.message}`);
+          // フォールバック：単純な文字列結合
+          const baseDir = headerUrl.replace(/\/[^\/]*$/, '/');
+          fullDataUrl = baseDir + dataUrl.replace('./', '');
+          console.log(`Fallback data URL: ${fullDataUrl}`);
+        }
+      }
+      
+      // データを取得（Google Scriptsの場合は複数パターンを試行）
+      let data;
+      if (fullDataUrl.includes('script.google') || fullDataUrl.includes('script.googleusercontent.com')) {
+        console.log('Google Scripts URL detected, trying multiple patterns...');
+        
+        // Google ScriptsのURLパターンを複数試行
+        const scriptId = extractScriptId(fullDataUrl);
+        const googlePatternsToTry = [
+          fullDataUrl, // 元のURL
+          fullDataUrl.replace('script.googleusercontent.com', 'script.google.com'), // スクリプトURLに変更
+          fullDataUrl.replace('script.google.com', 'script.googleusercontent.com'), // ユーザーコンテンツURLに変更
+          // exec形式への変換を試行
+          fullDataUrl.replace(/macros\/echo\?.*/, 'macros/s/' + scriptId + '/exec'),
+          // Web app形式への変換を試行
+          `https://script.google.com/macros/s/${scriptId}/exec`,
+          `https://script.googleusercontent.com/macros/s/${scriptId}/exec`,
+          // Dev形式も試行
+          `https://script.google.com/macros/s/${scriptId}/dev`
+        ];
+        
+        // 重複を除去
+        const uniquePatterns = [...new Set(googlePatternsToTry)];
+        
+        for (const googleUrl of uniquePatterns) {
+          try {
+            console.log(`Trying Google Scripts URL: ${googleUrl}`);
+            data = await fetchJson(googleUrl);
+            console.log(`Successfully fetched data from: ${googleUrl}`);
+            break;
+          } catch (googleError) {
+            console.log(`Failed to fetch from ${googleUrl}: ${googleError.message}`);
+            if (googleUrl === uniquePatterns[uniquePatterns.length - 1]) {
+              throw new Error(`Failed to fetch Google Scripts data from all patterns: ${uniquePatterns.join(', ')}`);
+            }
+            continue;
+          }
+        }
+      } else {
+        // 通常のURL
+        data = await fetchJson(fullDataUrl);
       }
       
       tables.push({
@@ -3781,3 +3749,135 @@ ipcMain.handle('open-directory', async (event, directoryPath) => {
     };
   }
 });
+
+// ローカル保存機能（無効化）
+/*
+// 難易度表のローカル保存
+ipcMain.handle('save-difficulty-table-local', async (_, tableUrl, tableData) => {
+  try {
+    const crypto = require('crypto');
+    const hash = crypto.createHash('md5').update(tableUrl).digest('hex');
+    const cacheDir = path.join(app.getPath('userData'), 'difficulty-tables-cache');
+    
+    // キャッシュディレクトリを作成
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+    
+    // headerとbodyを分けて保存
+    const headerFileName = `header_${hash}.json`;
+    const bodyFileName = `body_${hash}.json`;
+    const headerPath = path.join(cacheDir, headerFileName);
+    const bodyPath = path.join(cacheDir, bodyFileName);
+    
+    // headerデータを保存
+    const headerCacheData = {
+      url: tableUrl,
+      type: 'header',
+      data: tableData.header,
+      savedAt: new Date().toISOString(),
+      version: '1.0'
+    };
+    
+    // bodyデータを保存
+    const bodyCacheData = {
+      url: tableUrl,
+      type: 'body',
+      data: tableData.body,
+      savedAt: new Date().toISOString(),
+      version: '1.0'
+    };
+    
+    fs.writeFileSync(headerPath, JSON.stringify(headerCacheData, null, 2), 'utf8');
+    fs.writeFileSync(bodyPath, JSON.stringify(bodyCacheData, null, 2), 'utf8');
+    
+    console.log(`[main.js] 難易度表をローカル保存しました: ${headerFileName}, ${bodyFileName}`);
+    
+    return { success: true, headerPath: headerPath, bodyPath: bodyPath };
+  } catch (error) {
+    console.error('[main.js] 難易度表ローカル保存エラー:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// ローカル保存された難易度表の読み込み
+ipcMain.handle('load-difficulty-table-local', async (_, tableUrl) => {
+  try {
+    const crypto = require('crypto');
+    const hash = crypto.createHash('md5').update(tableUrl).digest('hex');
+    const cacheDir = path.join(app.getPath('userData'), 'difficulty-tables-cache');
+    
+    const headerFileName = `header_${hash}.json`;
+    const bodyFileName = `body_${hash}.json`;
+    const headerPath = path.join(cacheDir, headerFileName);
+    const bodyPath = path.join(cacheDir, bodyFileName);
+    
+    // 両方のファイルが存在するかチェック
+    if (!fs.existsSync(headerPath) || !fs.existsSync(bodyPath)) {
+      return { success: false, error: 'キャッシュファイルが見つかりません' };
+    }
+    
+    // headerとbodyを読み込み
+    const headerContent = fs.readFileSync(headerPath, 'utf8');
+    const bodyContent = fs.readFileSync(bodyPath, 'utf8');
+    const headerCache = JSON.parse(headerContent);
+    const bodyCache = JSON.parse(bodyContent);
+    
+    console.log(`[main.js] ローカル保存された難易度表を読み込みました: ${headerFileName}, ${bodyFileName}`);
+    
+    return { 
+      success: true, 
+      data: {
+        header: headerCache.data,
+        body: bodyCache.data
+      },
+      savedAt: headerCache.savedAt 
+    };
+  } catch (error) {
+    console.error('[main.js] ローカル難易度表読み込みエラー:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 難易度表がキャッシュされているかチェック
+ipcMain.handle('is-difficulty-table-cached', async (_, tableUrl) => {
+  try {
+    const crypto = require('crypto');
+    const hash = crypto.createHash('md5').update(tableUrl).digest('hex');
+    const cacheDir = path.join(app.getPath('userData'), 'difficulty-tables-cache');
+    
+    const headerFileName = `header_${hash}.json`;
+    const bodyFileName = `body_${hash}.json`;
+    const headerPath = path.join(cacheDir, headerFileName);
+    const bodyPath = path.join(cacheDir, bodyFileName);
+    
+    const headerExists = fs.existsSync(headerPath);
+    const bodyExists = fs.existsSync(bodyPath);
+    const exists = headerExists && bodyExists;
+    
+    let savedAt = null;
+    
+    if (exists) {
+      try {
+        const headerContent = fs.readFileSync(headerPath, 'utf8');
+        const headerCache = JSON.parse(headerContent);
+        savedAt = headerCache.savedAt;
+      } catch (parseError) {
+        console.error('[main.js] キャッシュファイル解析エラー:', parseError);
+      }
+    }
+    
+    console.log(`[main.js] 難易度表キャッシュ確認: ${tableUrl} -> exists: ${exists}, savedAt: ${savedAt}`);
+    
+    return { 
+      exists: exists,
+      savedAt: savedAt,
+      headerExists: headerExists,
+      bodyExists: bodyExists
+    };
+  } catch (error) {
+    console.error('[main.js] 難易度表キャッシュ確認エラー:', error);
+    return { exists: false, error: error.message };
+  }
+});
+*/
