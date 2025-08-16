@@ -138,15 +138,15 @@ async function updateTableList() {
           
           if (headerExists && dataExists) {
             const savedDate = new Date(table.savedFiles.savedAt).toLocaleDateString('ja-JP');
-            saveStatus = `<span class="save-status saved">💾 保存済み (${savedDate})</span>`;
+            saveStatus = `<span class="save-status saved">💾 ローカル保存済み (${savedDate})</span>`;
           } else {
-            saveStatus = '<span class="save-status error">⚠️ ファイル欠損</span>';
+            saveStatus = '<span class="save-status error">❌ 未保存</span>';
           }
         } else {
           // 従来の方法でチェック
           const saveInfo = await window.api.checkSavedDifficultyTable(table.url);
           if (saveInfo.exists) {
-            saveStatus = '<span class="save-status saved">💾 保存済み</span>';
+            saveStatus = '<span class="save-status saved">💾 ローカル保存済み</span>';
           } else {
             saveStatus = '<span class="save-status not-saved">❌ 未保存</span>';
           }
@@ -166,7 +166,7 @@ async function updateTableList() {
             <input type="checkbox" class="table-checkbox" id="checkbox-${originalIndex}" 
                    data-table-url="${escapeHtml(table.url)}" 
                    ${state.defaultTableUrls.includes(table.url) ? 'checked' : ''}>
-            <label for="checkbox-${originalIndex}" class="table-checkbox-label">更新曲一覧で使用</label>
+            <label for="checkbox-${originalIndex}" class="table-checkbox-label">更新曲一覧で表示</label>
             <button class="btn-update" data-original-index="${originalIndex}" data-table-url="${escapeHtml(table.url)}" data-table-name="${escapeHtml(table.name)}">更新</button>
           </div>
           <div class="table-actions">
@@ -748,6 +748,27 @@ async function updateTable(originalIndex) {
   try {
     showTableStatus(`「${tableName}」のデータを更新中...`, 'info');
     
+    // 🗑️ 既存のローカルファイルを削除してから更新を実行
+    try {
+      showTableStatus(`「${tableName}」の既存ローカルファイルを削除中...`, 'info');
+      const deleteResult = await window.api.deleteSavedDifficultyTable(tableUrl);
+      
+      if (deleteResult.success) {
+        if (deleteResult.deletedFiles.length > 0) {
+          console.log(`既存ローカルファイル削除完了: ${tableName}`, deleteResult.deletedFiles);
+          showTableStatus(`「${tableName}」の既存ローカルファイルを削除しました`, 'success');
+        } else {
+          console.log(`既存ローカルファイルは存在しませんでした: ${tableName}`);
+        }
+      } else {
+        console.error(`既存ローカルファイル削除エラー: ${tableName}`, deleteResult.errors);
+        showTableStatus(`既存ローカルファイルの削除中にエラーが発生しましたが、更新を続行します`, 'warning');
+      }
+    } catch (deleteError) {
+      console.error(`既存ローカルファイル削除中にエラー: ${tableName}`, deleteError);
+      showTableStatus(`既存ローカルファイルの削除中にエラーが発生しましたが、更新を続行します`, 'warning');
+    }
+    
     // 難易度表データを再取得
     const tableData = await window.api.loadDifficultyTable(tableUrl);
     
@@ -786,7 +807,7 @@ async function updateTable(originalIndex) {
         dataPath: savedDataPath,
         urlHash: urlHash,
         savedAt: new Date().toISOString()
-      } : table.savedFiles // 保存に失敗した場合は既存の情報を保持
+      } : null // 保存に失敗した場合はnullに設定
     };
     
     await updateTableList();
@@ -846,6 +867,23 @@ async function bulkUpdateTables() {
     try {
       showTableStatus(`更新中... (${i + 1}/${totalTables}): ${tableName}`, 'info');
       
+      // 🗑️ 既存のローカルファイルを削除してから更新を実行
+      try {
+        const deleteResult = await window.api.deleteSavedDifficultyTable(tableUrl);
+        
+        if (deleteResult.success) {
+          if (deleteResult.deletedFiles.length > 0) {
+            console.log(`一括更新 - 既存ローカルファイル削除完了: ${tableName}`, deleteResult.deletedFiles);
+          } else {
+            console.log(`一括更新 - 既存ローカルファイルは存在しませんでした: ${tableName}`);
+          }
+        } else {
+          console.error(`一括更新 - 既存ローカルファイル削除エラー: ${tableName}`, deleteResult.errors);
+        }
+      } catch (deleteError) {
+        console.error(`一括更新 - 既存ローカルファイル削除中にエラー: ${tableName}`, deleteError);
+      }
+      
       // 難易度表データを再取得
       const tableData = await window.api.loadDifficultyTable(tableUrl);
       
@@ -880,7 +918,7 @@ async function bulkUpdateTables() {
           dataPath: savedDataPath,
           urlHash: urlHash,
           savedAt: new Date().toISOString()
-        } : table.savedFiles // 保存に失敗した場合は既存の情報を保持
+        } : null // 保存に失敗した場合はnullに設定
       };
       
       successCount++;
@@ -1334,6 +1372,8 @@ async function importFromConfigSys() {
     
     let successCount = 0;
     let skippedCount = 0;
+    let addedCount = 0;
+    let updatedCount = 0;
     
     // 各URLを順番に処理
     for (let i = 0; i < tableURLs.length; i++) {
@@ -1342,11 +1382,30 @@ async function importFromConfigSys() {
       showTableStatus(`処理中... (${i + 1}/${tableURLs.length}): ${url}`, 'info');
       
       // すでに登録されているかチェック
-      const exists = state.difficultyTables.some(table => table.url === url);
-      if (exists) {
-        console.log(`スキップ（既存）: ${url}`);
-        skippedCount++;
-        continue;
+      const existingTableIndex = state.difficultyTables.findIndex(table => table.url === url);
+      const isUpdate = existingTableIndex !== -1;
+      
+      if (isUpdate) {
+        console.log(`既存の難易度表を更新: ${url}`);
+        
+        // 🗑️ 既存のローカルファイルを削除してから更新を実行
+        try {
+          const deleteResult = await window.api.deleteSavedDifficultyTable(url);
+          
+          if (deleteResult.success) {
+            if (deleteResult.deletedFiles.length > 0) {
+              console.log(`インポート - 既存ローカルファイル削除完了: ${url}`, deleteResult.deletedFiles);
+            } else {
+              console.log(`インポート - 既存ローカルファイルは存在しませんでした: ${url}`);
+            }
+          } else {
+            console.error(`インポート - 既存ローカルファイル削除エラー: ${url}`, deleteResult.errors);
+          }
+        } catch (deleteError) {
+          console.error(`インポート - 既存ローカルファイル削除中にエラー: ${url}`, deleteError);
+        }
+      } else {
+        console.log(`新規追加: ${url}`);
       }
       
       try {
@@ -1372,66 +1431,94 @@ async function importFromConfigSys() {
             savedHeaderPath = saveResult.headerPath;
             savedDataPath = saveResult.dataPath;
             urlHash = saveResult.urlHash;
-            console.log(`ローカル保存完了: ${tableName}`, saveResult);
+            console.log(`インポート - ローカル保存完了: ${tableName}`, saveResult);
           } else {
-            console.error(`ローカル保存失敗: ${tableName}`, saveResult.error);
+            console.error(`インポート - ローカル保存失敗: ${tableName}`, saveResult.error);
           }
         } catch (saveError) {
-          console.error(`ローカル保存中にエラー: ${tableName}`, saveError);
+          console.error(`インポート - ローカル保存中にエラー: ${tableName}`, saveError);
         }
         
-        // 新しい難易度表を追加
-        const newTable = {
-          url: url,
-          name: tableName,
-          priority: state.difficultyTables.length,
-          // ローカル保存されたファイルパス情報
-          savedFiles: savedHeaderPath && savedDataPath ? {
-            headerPath: savedHeaderPath,
-            dataPath: savedDataPath,
-            urlHash: urlHash,
-            savedAt: new Date().toISOString()
-          } : null
-        };
+        if (isUpdate) {
+          // 既存の難易度表を更新
+          state.difficultyTables[existingTableIndex] = {
+            ...state.difficultyTables[existingTableIndex],
+            name: tableName,
+            savedFiles: savedHeaderPath && savedDataPath ? {
+              headerPath: savedHeaderPath,
+              dataPath: savedDataPath,
+              urlHash: urlHash,
+              savedAt: new Date().toISOString()
+            } : null
+          };
+          updatedCount++;
+          console.log(`更新成功: ${tableName} (${url})`);
+        } else {
+          // 新しい難易度表を追加
+          const newTable = {
+            url: url,
+            name: tableName,
+            priority: state.difficultyTables.length,
+            // ローカル保存されたファイルパス情報
+            savedFiles: savedHeaderPath && savedDataPath ? {
+              headerPath: savedHeaderPath,
+              dataPath: savedDataPath,
+              urlHash: urlHash,
+              savedAt: new Date().toISOString()
+            } : null
+          };
+          
+          state.difficultyTables.push(newTable);
+          addedCount++;
+          console.log(`追加成功: ${tableName} (${url})`);
+        }
         
-        state.difficultyTables.push(newTable);
         successCount++;
-        
-        console.log(`追加成功: ${tableName} (${url})`);
         
       } catch (error) {
         console.error(`テーブル追加エラー (${url}):`, error);
-        // エラーでも処理を続行
         
-        // URLから名前を推測して追加
-        const tableName = extractTableNameFromUrl(url);
-        const newTable = {
-          url: url,
-          name: tableName,
-          priority: state.difficultyTables.length,
-          savedFiles: null // エラー時はローカル保存情報なし
-        };
-        
-        state.difficultyTables.push(newTable);
-        successCount++;
+        if (isUpdate) {
+          // 更新でエラーが発生した場合はスキップとして扱う
+          skippedCount++;
+        } else {
+          // エラーでも処理を続行（新規追加の場合のみ）
+          // URLから名前を推測して追加
+          const tableName = extractTableNameFromUrl(url);
+          const newTable = {
+            url: url,
+            name: tableName,
+            priority: state.difficultyTables.length,
+            savedFiles: null // エラー時はローカル保存情報なし
+          };
+          
+          state.difficultyTables.push(newTable);
+          addedCount++;
+        }
       }
     }
     
     // 設定を保存
-    if (successCount > 0) {
+    const totalProcessed = addedCount + updatedCount;
+    if (totalProcessed > 0) {
       try {
         const newConfig = createConfigObject();
         await window.api.updateConfig(newConfig);
         await updateTableList();
         
-        const message = `インポート完了: ${successCount}個追加, ${skippedCount}個スキップ`;
+        const messageParts = [];
+        if (addedCount > 0) messageParts.push(`${addedCount}個追加`);
+        if (updatedCount > 0) messageParts.push(`${updatedCount}個更新`);
+        if (skippedCount > 0) messageParts.push(`${skippedCount}個スキップ`);
+        
+        const message = `インポート完了: ${messageParts.join(', ')}`;
         showTableStatus(message, 'success');
         
       } catch (saveError) {
         showTableStatus(`設定の保存に失敗しました: ${saveError.message}`, 'error');
       }
     } else {
-      showTableStatus('新しく追加された難易度表はありませんでした', 'info');
+      showTableStatus('新しく追加または更新された難易度表はありませんでした', 'info');
     }
     
   } catch (error) {

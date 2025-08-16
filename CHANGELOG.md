@@ -13,6 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+# [1.2.1] - 2025-08-17
+
+### Added
+- 
+- 
+
+### Changed
+- 
+- 
+
+### Fixed
+- 難易度表の更新ボタンが正常に機能していない不具合を修正
+- 
+
 
 # [1.2.0] - 2025-08-15
 

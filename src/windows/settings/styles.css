@@ -281,6 +281,8 @@
 }
 
 .btn-update {
+  border: none;
+  border-radius: 3px;
   background: #27ae60;
   color: white;
   margin-left: 10px;
