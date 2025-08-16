@@ -8,7 +8,6 @@
 ### CSS階層構造
 - **common.css**: 全ウィンドウ共通のベーススタイル
 - **各ウィンドウのstyles.css**: ウィンドウ固有のスタイル
-- **保守性**: インラインCSSからの分離により可読性とメンテナンス性を向上
 
 ## 使用方法
 
@@ -30,40 +29,32 @@ Beat-Archive/
 ├── main.js             # Electronメインプロセス
 ├── config.json         # アプリケーション設定
 ├── src/                # ソースコード
-│   ├── debug/          # デバッグ用スクリプト置き場
-│   ├── common/         # 共通ファイル
-│   │   ├── styles/     # 共通スタイルシート
-│   │   │   └── common.css # 全ウィンドウ共通のCSS
-│   │   ├── assets/     # 共通アセット
-│   │   │   └── icon/   # アイコンファイル
-│   │   └── utils.js    # 共通ユーティリティ関数
-│   ├── windows/        # ウィンドウごとのディレクトリ
-│   │   ├── main/       # メインウィンドウ
-│   │   │   ├── index.html    # メイン画面HTML
-│   │   │   ├── main-window.js   # メイン画面JS
-│   │   │   └── styles.css    # メイン画面専用CSS
-│   │   ├── settings/   # 設定ウィンドウ
-│   │   │   ├── settings.html # 設定画面HTML
-│   │   │   ├── settings-window.js   # 設定画面JS
-│   │   │   └── styles.css    # 設定画面専用CSS
-│   │   ├── smartview/  # スマートビューウィンドウ
-│   │   │   ├── smartview.html # スマートビューHTML
-│   │   │   ├── smartview-window.js    # スマートビューJS
-│   │   │   └── styles.css     # スマートビュー専用CSS
-│   │   └── clearlamp/  # クリアランプウィンドウ
-│   │       ├── clearlamp.html # クリアランプHTML
-│   │       ├── clearlamp-window.js    # クリアランプJS
-│   │       └── styles.css     # クリアランプ専用CSS
-│   └── preload.js      # Electronプリロードスクリプト
-├── sample-db/          # サンプルデータベース
-│   ├── score.db        # スコアデータ
-│   ├── scorelog.db     # プレイログ
-│   ├── scoredatalog.db # 詳細プレイデータ
-│   ├── songdata.db     # 楽曲メタデータ
-│   └── songinfo.db     # 楽曲情報
-├── debug/              # デバッグスクリプト
-├── test/               # テストスクリプト
-└── testdata/           # テストデータ作成スクリプト
+    ├── debug/          # デバッグ用スクリプト置き場
+    ├── common/         # 共通ファイル
+    │   ├── styles/     # 共通スタイルシート
+    │   │   └── common.css # 全ウィンドウ共通のCSS
+    │   ├── assets/     # 共通アセット
+    │   │   └── icon/   # アイコンファイル
+    │   └── utils.js    # 共通ユーティリティ関数
+    ├── windows/        # ウィンドウごとのディレクトリ
+    │   ├── main/       # メインウィンドウ
+    │   │   ├── index.html    # メイン画面HTML
+    │   │   ├── main-window.js   # メイン画面JS
+    │   │   └── styles.css    # メイン画面専用CSS
+    │   ├── settings/   # 設定ウィンドウ
+    │   │   ├── settings.html # 設定画面HTML
+    │   │   ├── settings-window.js   # 設定画面JS
+    │   │   └── styles.css    # 設定画面専用CSS
+    │   ├── smartview/  # スマートビューウィンドウ
+    │   │   ├── smartview.html # スマートビューHTML
+    │   │   ├── smartview-window.js    # スマートビューJS
+    │   │   └── styles.css     # スマートビュー専用CSS
+    │   └── clearlamp/  # クリアランプウィンドウ
+    │       ├── clearlamp.html # クリアランプHTML
+    │       ├── clearlamp-window.js    # クリアランプJS
+    │       └── styles.css     # クリアランプ専用CSS
+    └── preload.js      # Electronプリロードスクリプト
+
 ```
 
 ## データベース
@@ -75,13 +66,6 @@ Beat-Archive/
 - `songdata.db` - 楽曲メタデータ
 - `songinfo.db` - 楽曲情報
 
-## 開発・デバッグ
-
-- デバッグスクリプト: `debug/` ディレクトリ
-- テストスクリプト: `test/` ディレクトリ  
-- テストデータ作成: `testdata/` ディレクトリ
-
-詳細は各ディレクトリの`README.md`を参照してください。
 
 ## GitHub Actions
 

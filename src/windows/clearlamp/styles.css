@@ -267,14 +267,14 @@
 
 .djlevel-cell {
   text-align: center;
-  width: 80px;
+  width: 100px;
   font-family: monospace;
   font-weight: bold;
 }
 
 .scorerate-cell {
   text-align: center;
-  width: 90px;
+  width: 120px;
   font-family: monospace;
 }
 
