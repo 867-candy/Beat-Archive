@@ -67,24 +67,6 @@ Beat-Archive/
 - `songinfo.db` - 楽曲情報
 
 
-## GitHub Actions
-
-このプロジェクトには以下のGitHub Actionsワークフローが設定されています：
-
-### CI/CD ワークフロー
-
-1. **CI (`ci.yml`)**
-   - developブランチプッシュ時の開発用ビルドチェック
-   - プルリクエスト時の品質チェック
-
-2. **Build and Release (`release.yml`)**
-   - タグプッシュ時（v*）の自動リリース作成
-   - Windows向けインストーラーとポータブル版の自動ビルド
-
-### ビルド成果物
-
-- **Windows**: `.exe` インストーラー および ポータブル版
-
 ### リリース方法
 
 1. **バージョンアップとリリース**:
@@ -104,5 +86,3 @@ Beat-Archive/
    git tag v1.1.0
    git push origin v1.1.0
    ```
-
-3. GitHub Actionsが自動的にビルドしてリリースを作成します
