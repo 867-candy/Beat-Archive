@@ -52,6 +52,8 @@
       "config-build.json",
       "app.ico",
       "node_modules/**/*",
+      "!readme-assets",
+      "!sample-db",
       "!debug",
       "!test",
       "!testdata",
