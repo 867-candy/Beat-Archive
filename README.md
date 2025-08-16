@@ -1,7 +1,5 @@
 # Beat Archive
 
-Beatorajaのスコアデータとプレイログを管理するElectronアプリケーション
-
 ## Beat Archiveとは？
 
 Beat Archiveは、BMSプレイヤーである**beatoraja**のスコアデータを総合的に管理・可視化するElectronベースのデスクトップアプリケーションです。プレイヤーのプレイ履歴、各種難易度表のごとのプレイ情報を閲覧することができます。  
@@ -19,7 +17,7 @@ Beat Archiveは、BMSプレイヤーである**beatoraja**のスコアデータ�
 XとDiscordでの共有が可能です。(Discord共有機能の使用には設定が必要です)
 <img src="readme-assets/image-1.png" width="50%">
 
-![alt text](image-2.png)  
+![alt text](readme-assets/image-2.png)  
 並び順の変更も可能です(昇順降順選択可)。  
 
 <img src="readme-assets/image-6.png" width="50%">
