@@ -37,6 +37,7 @@ XとDiscordでの共有が可能です。(Discord共有機能の使用には設�
 
 
 リンクサービスを設定することで、曲名から各種IR/譜面情報に遷移することができます。 
+
 ![alt text](readme-assets/image-5.png)  
  
 ## 設定方法
