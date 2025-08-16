@@ -36,9 +36,9 @@ XとDiscordでの共有が可能です。(Discord共有機能の使用には設�
 <img src="readme-assets/image-4.png" width="75%">  
 
 
-リンクサービスを設定することで、曲名から各種IR/譜面情報に遷移することができます。 
-
 ![alt text](readme-assets/image-5.png)  
+
+リンクサービスを設定することで、曲名から各種IR/譜面情報に遷移することができます。 
  
 ## 設定方法
 
@@ -81,10 +81,10 @@ DiscordのWebhook URLを設定すると、Compact ViewからDiscordに統計情�
 
 以下のbeatorajaデータベースファイルが必要です：
 
-- `score.db` - スコアデータ
 - `congif_sys.json` - beatorajaのconfigファイル
 - `songdata.db` - 楽曲メタデータ  
-- `scorelog.db` - プレイログ（オプション）
-- `scoredatalog.db` - スコア変更ログ（オプション）
+- `score.db` - スコアデータ
+- `scorelog.db` - プレイログ
+- `scoredatalog.db` - スコア変更ログ
 
 
