@@ -869,6 +869,7 @@ async function updateDisplay() {
   console.log('=== updateDisplay 開始 ===');
   updateStats();
   updateChart();
+  updateScoreChart();
   await updateSongTable();
   await createLevelDropdown();
   console.log('=== updateDisplay 完了 ===');
@@ -1149,6 +1150,308 @@ function updateChart() {
       // ページ座標を使用してツールチップを移動
       console.log('Mousemove (fixed):', { clientX: e.clientX, clientY: e.clientY });
       
+      // ツールチップをマウスの右下に表示（fixed位置）
+      tooltip.style.position = 'fixed';
+      tooltip.style.left = (e.clientX + 15) + 'px';
+      tooltip.style.top = (e.clientY + 15) + 'px';
+      
+      // 画面端での調整
+      const tooltipRect = tooltip.getBoundingClientRect();
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      
+      // 右端を超える場合は左側に表示
+      if (e.clientX + tooltipRect.width + 15 > windowWidth) {
+        tooltip.style.left = (e.clientX - tooltipRect.width - 15) + 'px';
+      }
+      
+      // 下端を超える場合は上側に表示
+      if (e.clientY + tooltipRect.height + 15 > windowHeight) {
+        tooltip.style.top = (e.clientY - tooltipRect.height - 15) + 'px';
+      }
+    });
+    
+    rect.addEventListener('mouseleave', function(e) {
+      this.classList.remove('chart-rect-hover');
+      tooltip.style.display = 'none';
+    });
+    
+    // クリックイベントを無効化
+    rect.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      // クリック後もホバー状態とツールチップを維持
+      if (this.matches(':hover')) {
+        this.classList.add('chart-rect-hover');
+        tooltip.style.display = 'block';
+      }
+      return false;
+    });
+    
+    // コンテキストメニューも無効化
+    rect.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    });
+  });
+}
+
+// レベル別スコア状況チャートを更新
+function updateScoreChart() {
+  const chartContainer = document.getElementById('scoreChartContainer');
+  
+  // レベル別にグループ化
+  const levelGroups = {};
+  state.songs.forEach(song => {
+    if (!levelGroups[song.level]) {
+      levelGroups[song.level] = [];
+    }
+    levelGroups[song.level].push(song);
+  });
+  
+  const levels = Object.keys(levelGroups).sort((a, b) => {
+    const numA = parseFloat(a);
+    const numB = parseFloat(b);
+    if (isNaN(numA) && isNaN(numB)) return a.localeCompare(b);
+    if (isNaN(numA)) return 1;
+    if (isNaN(numB)) return -1;
+    return numA - numB;
+  });
+  
+  if (levels.length === 0) {
+    chartContainer.innerHTML = '<div class="chart-placeholder">データがありません</div>';
+    return;
+  }
+  
+  // チャートの設定（横向きに調整）
+  const chartWidth = 800;
+  const barHeight = 12; // 固定のバー高さ
+  const barSpacing = 18; // バー間のスペース
+  const margin = { top: 40, right: 80, bottom: 60, left: 80 };
+  const plotWidth = chartWidth - margin.left - margin.right;
+  
+  // 実際のコンテンツサイズに基づいて高さを計算
+  const contentHeight = levels.length * barSpacing;
+  const chartHeight = margin.top + contentHeight + margin.bottom;
+  const plotHeight = contentHeight;
+  
+  // スコアランクの色設定
+  const scoreColors = {
+    'AAA': '#F6D365',
+    'AA': '#F3B079',
+    'A': '#EC7576',
+    'B': '#6BBAF2',
+    'C': '#79E27D',
+    'D': '#F1A4F4',
+    'E': '#B17D88',
+    'F': '#B6B4B4',
+    'NOPLAY': '#f3f4f6', // NO PLAY - グレー
+    'NOSONG': '#ffffff'  // NO SONG - 白色
+  };
+  
+  // スコアランクの順序（高い順）
+  const scoreOrder = ['AAA', 'AA', 'A', 'B', 'C', 'D', 'E', 'F', 'NOPLAY', 'NOSONG'];
+  
+  // スコアランクを計算する関数
+  function getScoreRank(song) {    
+    const scoreData = song.scoreData;
+    // scoreDataが存在しない場合、clearで判定
+    if (!scoreData.score || scoreData.score === 0 || !scoreData.notes || scoreData.notes === 0) {
+     // クリアタイプが-1の場合はNOSONG（楽曲が存在しない）
+      if (song.clear === -1) {
+        return 'NOSONG';
+      }
+      // クリアタイプが0の場合はNOPLAY（楽曲は存在するがプレイしていない）
+      if (song.clear === 0) {
+        return 'NOPLAY';
+      }
+      // その他の場合もNOPLAY扱い
+      return 'NOPLAY';
+    }
+    
+    // スコアレートを計算（理論値は全ノーツPG：2点）
+    const maxScore = scoreData.notes * 2;
+    const scoreRate = scoreData.score / maxScore;
+    
+    // 既存のランク基準を使用（8等分されたランク基準）
+    const basicRankThresholds = [
+      { name: 'AAA', threshold: 8/9 },  // 8/9以上
+      { name: 'AA', threshold: 7/9 },   // 7/9以上
+      { name: 'A', threshold: 6/9 },    // 6/9以上
+      { name: 'B', threshold: 5/9 },    // 5/9以上
+      { name: 'C', threshold: 4/9 },    // 4/9以上
+      { name: 'D', threshold: 3/9 },    // 3/9以上
+      { name: 'E', threshold: 2/9 },    // 2/9以上
+      { name: 'F', threshold: 0 }       // 0以上
+    ];
+    
+    // 現在のランクを特定
+    for (const rank of basicRankThresholds) {
+      if (scoreRate >= rank.threshold) {
+        return rank.name;
+      }
+    }
+    
+    return 'F'; // デフォルト
+  }
+  
+  // 最大楽曲数を取得（各バーを100%の長さに統一）
+  const maxBarWidth = plotWidth; // グラフの横幅を下のメモリと揃える
+  
+  // SVG作成
+  let svgHtml = `
+    <svg class="chart-svg" width="${chartWidth}" height="${chartHeight}" viewBox="0 0 ${chartWidth} ${chartHeight}" style="width: 100%; height: 100%;">
+      <defs>
+        <clipPath id="score-chart-clip">
+          <rect x="${margin.left}" y="${margin.top}" width="${plotWidth}" height="${plotHeight}"></rect>
+        </clipPath>
+      </defs>
+  `;
+  
+  // X軸の描画（横向きなので下部）
+  const lastElementY = margin.top + (levels.length - 1) * barSpacing + (barSpacing - barHeight) / 2 + barHeight;
+  svgHtml += `
+    <g class="x-axis">
+      <line x1="${margin.left}" y1="${lastElementY + 10}" x2="${margin.left + plotWidth}" y2="${lastElementY + 10}" stroke="#666" stroke-width="1"></line>
+  `;
+  
+  // X軸の目盛り（パーセンテージ）
+  for (let i = 0; i <= 10; i++) {
+    const x = margin.left + (i / 10) * plotWidth;
+    const value = i * 10;
+    svgHtml += `
+      <line x1="${x}" y1="${lastElementY + 10}" x2="${x}" y2="${lastElementY + 15}" stroke="#666" stroke-width="1"></line>
+      <text x="${x}" y="${lastElementY + 30}" text-anchor="middle" fill="#666" font-size="10">${value}%</text>
+    `;
+  }
+  svgHtml += `</g>`;
+  
+  // Y軸の描画（左側）
+  svgHtml += `
+    <g class="y-axis">
+      <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${lastElementY + 10}" stroke="#666" stroke-width="1"></line>
+  `;
+  
+  // 各レベルの横向き棒グラフを描画
+  levels.forEach((level, index) => {
+    const songs = levelGroups[level];
+    const totalSongs = songs.length;
+    const y = margin.top + index * barSpacing + (barSpacing - barHeight) / 2;
+    
+    // レベルのシンボル情報を取得（headerから取得）
+    const levelSymbol = state.selectedTableData?.header?.symbol || null;
+    
+    // スコアランク別の統計を計算
+    const scoreStats = {};
+    scoreOrder.forEach(rank => {
+      scoreStats[rank] = songs.filter(song => getScoreRank(song) === rank).length;
+    });
+    
+    // 積み上げ横棒グラフの描画（高い順から低い順に）
+    let currentX = margin.left;
+    scoreOrder.forEach(rank => {
+      const count = scoreStats[rank];
+      if (count > 0 && totalSongs > 0) {
+        const percentage = count / totalSongs;
+        const width = percentage * maxBarWidth;
+        
+        svgHtml += `
+          <rect x="${currentX}" y="${y}" width="${width}" height="${barHeight}" 
+                fill="${scoreColors[rank]}" stroke="#fff" stroke-width="0.5"
+                data-level="${level}" data-score-rank="${rank}" data-count="${count}">
+          </rect>
+        `;
+        
+        currentX += width;
+      }
+    });
+    
+    // Y軸ラベル（レベル名とシンボル）
+    const displayText = levelSymbol ? `${levelSymbol}${level}` : level;
+    svgHtml += `
+      <text x="${margin.left - 10}" y="${y + barHeight/2 + 4}" 
+            text-anchor="end" fill="#666" font-size="12" font-weight="bold">${displayText}</text>
+    `;
+    
+    // 楽曲数を右側に表示
+    svgHtml += `
+      <text x="${margin.left + plotWidth + 10}" y="${y + barHeight/2 + 4}" 
+            text-anchor="start" fill="#999" font-size="10">${totalSongs}曲</text>
+    `;
+  });
+  
+  svgHtml += `</g>`;
+  
+  // グラフタイトル
+  const tableName = state.selectedTableIndex >= 0 ? state.difficultyTables[state.selectedTableIndex].name : '';
+  svgHtml += `
+    <text x="${chartWidth/2}" y="25" text-anchor="middle" fill="#2c3e50" font-size="14" font-weight="bold">
+      レベル別スコア状況 ${tableName ? `- ${tableName}` : ''} (総楽曲数: ${state.songs.length})
+    </text>
+  `;
+  
+  // X軸ラベル
+  svgHtml += `
+    <text x="${chartWidth/2}" y="${chartHeight - 10}" text-anchor="middle" fill="#666" font-size="12">
+      スコア分布 (%)
+    </text>
+  `;
+  
+  svgHtml += `</svg>`;
+  
+  chartContainer.innerHTML = svgHtml;
+  
+  // カスタムツールチップ要素を作成
+  let tooltip = chartContainer.querySelector('.custom-tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.className = 'custom-tooltip';
+    tooltip.style.cssText = `
+      position: absolute;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      pointer-events: none;
+      z-index: 1000;
+      display: none;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      left: -9999px;
+      top: -9999px;
+    `;
+    chartContainer.appendChild(tooltip);
+  }
+  
+  // ホバーイベントを追加
+  const rects = chartContainer.querySelectorAll('rect[data-level]');
+  rects.forEach(rect => {
+    rect.addEventListener('mouseenter', function(e) {
+      this.classList.add('chart-rect-hover');
+      this.style.cursor = 'default';
+      
+      // カスタムツールチップを表示
+      const level = this.getAttribute('data-level');
+      const scoreRank = this.getAttribute('data-score-rank');
+      const count = this.getAttribute('data-count');
+      
+      // レベル総数を計算
+      const levelSongs = state.songs.filter(song => song.level.toString() === level);
+      const totalSongs = levelSongs.length;
+      const percentage = totalSongs > 0 ? ((count / totalSongs) * 100).toFixed(1) : '0.0';
+      
+      tooltip.innerHTML = `${level} - ${scoreRank}: ${count}曲 (${percentage}%)`;
+      
+      // ページ全体での座標を使用
+      tooltip.style.position = 'fixed';
+      tooltip.style.left = (e.clientX + 15) + 'px';
+      tooltip.style.top = (e.clientY + 15) + 'px';
+      tooltip.style.display = 'block';
+    });
+    
+    rect.addEventListener('mousemove', function(e) {
       // ツールチップをマウスの右下に表示（fixed位置）
       tooltip.style.position = 'fixed';
       tooltip.style.left = (e.clientX + 15) + 'px';
