@@ -35,6 +35,7 @@ const state = {
   generatedCourse: null,
   generatedStages: [],
   existingCourses: [],
+  resolvedCourseFilePath: '',
   existingCourseFilePath: '',
   existingCourseTableName: '',
   courseDifficultyLookup: new Map(),
@@ -42,6 +43,10 @@ const state = {
   expandedExistingCourses: new Set(),
   courseMetadata: []
 };
+
+function getResolvedCourseFilePath() {
+  return state.existingCourseFilePath || state.resolvedCourseFilePath || '';
+}
 
 function showStatus(message, type = 'info') {
   const statusEl = document.getElementById('status');
@@ -307,10 +312,10 @@ function renderExistingCourses() {
   listEl.innerHTML = '';
 
   if (!state.existingCourseFilePath) {
-    summaryEl.textContent = '保存先JSONを読み込むと既存コースを表示します';
+    summaryEl.textContent = '設定画面の Player* フォルダ設定から default.json を自動で読み込みます';
     const li = document.createElement('li');
     li.className = 'no-results';
-    li.textContent = 'まだ既存コースを読み込んでいません';
+    li.textContent = 'Player* フォルダが未設定です';
     listEl.appendChild(li);
     return;
   }
@@ -458,8 +463,7 @@ function renderExistingCourses() {
 
 async function loadExistingCourses(options = {}) {
   const { showStatusMessage = false } = options;
-  const savePathInput = document.getElementById('savePathInput');
-  const savePath = savePathInput.value.trim();
+  const savePath = state.resolvedCourseFilePath.trim();
 
   if (!savePath) {
     state.existingCourses = [];
@@ -478,12 +482,12 @@ async function loadExistingCourses(options = {}) {
     }
 
     state.existingCourses = Array.isArray(result.courses) ? result.courses : [];
-    state.existingCourseFilePath = result.filePath || savePath;
+    state.resolvedCourseFilePath = result.filePath || savePath;
+    state.existingCourseFilePath = state.resolvedCourseFilePath;
     state.existingCourseTableName = result.tableName || '';
     state.expandedExistingCourses = new Set(
       Array.from(state.expandedExistingCourses).filter((index) => index < state.existingCourses.length)
     );
-    savePathInput.value = state.existingCourseFilePath || savePath;
 
     if (state.existingCourses.length > 0 && state.difficultyTables.length > 0) {
       await ensureCourseDifficultyLookup();
@@ -507,7 +511,7 @@ async function loadExistingCourses(options = {}) {
 }
 
 async function deleteExistingCourse(courseIndex, courseName) {
-  const targetFilePath = state.existingCourseFilePath || document.getElementById('savePathInput').value.trim();
+  const targetFilePath = getResolvedCourseFilePath();
   if (!targetFilePath) {
     showStatus('削除対象の保存先JSONが見つかりません。', 'error');
     return;
@@ -873,7 +877,7 @@ function pickRandomSongForLevel(levelKey, usedKeys, songsByLevel = state.songsBy
 async function shuffleExistingCourse(courseIndex, courseName) {
   const course = state.existingCourses[courseIndex];
   const metadata = findCourseMetadata(course);
-  const targetFilePath = state.existingCourseFilePath || document.getElementById('savePathInput').value.trim();
+  const targetFilePath = getResolvedCourseFilePath();
 
   if (!course || !metadata) {
     showStatus('このコースは再選曲に必要な保存情報がありません。', 'error');
@@ -1018,9 +1022,9 @@ async function saveCourseToJson() {
     }
   }
 
-  const savePath = document.getElementById('savePathInput').value.trim();
+  const savePath = getResolvedCourseFilePath();
   if (!savePath) {
-    showStatus('保存先JSONファイルを指定してください。', 'error');
+    showStatus('設定画面で Player* フォルダを設定してください。保存先 default.json を自動判定できません。', 'error');
     return;
   }
 
@@ -1030,8 +1034,7 @@ async function saveCourseToJson() {
     if (!result || !result.success) {
       throw new Error(result?.error || '保存処理で不明なエラーが発生しました。');
     }
-
-    document.getElementById('savePathInput').value = result.filePath;
+    state.resolvedCourseFilePath = result.filePath || savePath;
 
     const metadata = buildCourseMetadataPayload({
       course: state.generatedCourse,
@@ -1056,19 +1059,6 @@ async function saveCourseToJson() {
   } catch (error) {
     console.error('保存エラー:', error);
     showStatus(`保存に失敗しました: ${error.message}`, 'error');
-  }
-}
-
-async function browseSavePath() {
-  try {
-    const selectedPath = await window.api.selectCourseJsonPath();
-    if (selectedPath) {
-      document.getElementById('savePathInput').value = selectedPath;
-      await loadExistingCourses({ showStatusMessage: true });
-    }
-  } catch (error) {
-    console.error('保存先選択エラー:', error);
-    showStatus(`保存先選択に失敗しました: ${error.message}`, 'error');
   }
 }
 
@@ -1112,14 +1102,6 @@ function setupEventListeners() {
   document.getElementById('noGoodSetting').addEventListener('change', resetGeneratedCourse);
   document.getElementById('trophySetting').addEventListener('change', resetGeneratedCourse);
 
-  document.getElementById('browseSavePathBtn').addEventListener('click', browseSavePath);
-  document.getElementById('loadExistingCoursesBtn').addEventListener('click', async () => {
-    clearStatus();
-    await loadExistingCourses({ showStatusMessage: true });
-  });
-  document.getElementById('savePathInput').addEventListener('change', async () => {
-    await loadExistingCourses();
-  });
   document.getElementById('generateBtn').addEventListener('click', generateCoursePreview);
   document.getElementById('saveBtn').addEventListener('click', saveCourseToJson);
 }
@@ -1143,11 +1125,13 @@ async function initialize() {
     state.courseDifficultyLookup = new Map();
     state.courseDifficultyLookupReady = false;
     state.courseMetadata = Array.isArray(config.courseMetadata) ? config.courseMetadata : [];
+    state.resolvedCourseFilePath = typeof config.customCourseJsonPath === 'string'
+      ? config.customCourseJsonPath.trim()
+      : '';
 
     populateTableSelect();
 
-    if (typeof config.customCourseJsonPath === 'string' && config.customCourseJsonPath.trim() !== '') {
-      document.getElementById('savePathInput').value = config.customCourseJsonPath;
+    if (state.resolvedCourseFilePath) {
       await loadExistingCourses();
     }
 
@@ -1159,6 +1143,12 @@ async function initialize() {
     const tableSelect = document.getElementById('tableSelect');
     tableSelect.value = state.difficultyTables[0].url;
     await loadTableDataByUrl(tableSelect.value);
+
+    if (!state.resolvedCourseFilePath) {
+      showStatus('設定画面で Player* フォルダを設定してください。保存先 default.json を自動判定できません。', 'error');
+      return;
+    }
+
     showStatus('初期化が完了しました。設定を選んでプレビューを生成してください。', 'success');
   } catch (error) {
     console.error('初期化エラー:', error);

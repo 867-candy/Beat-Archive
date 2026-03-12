@@ -1429,6 +1429,7 @@ if (isDevelopment) {
 
 let config = {
   dbPaths: {
+    playerDbFolder: '',
     score: '',
     scorelog: '',
     scoredatalog: '',
@@ -1440,6 +1441,79 @@ let config = {
   lastScreenshotDirectory: null
 };
 
+function ensureConfigDefaults() {
+  if (!config || typeof config !== 'object') {
+    config = {};
+  }
+
+  config.dbPaths = {
+    playerDbFolder: '',
+    score: '',
+    scorelog: '',
+    scoredatalog: '',
+    songdata: '',
+    ...(config.dbPaths && typeof config.dbPaths === 'object' ? config.dbPaths : {})
+  };
+
+  if (typeof config.customCourseJsonPath !== 'string') {
+    config.customCourseJsonPath = '';
+  }
+  if (!Array.isArray(config.courseMetadata)) {
+    config.courseMetadata = [];
+  }
+  if (!Array.isArray(config.difficultyTables)) {
+    config.difficultyTables = [];
+  }
+  if (!Object.prototype.hasOwnProperty.call(config, 'lastScreenshotPath')) {
+    config.lastScreenshotPath = null;
+  }
+  if (!Object.prototype.hasOwnProperty.call(config, 'lastScreenshotDirectory')) {
+    config.lastScreenshotDirectory = null;
+  }
+}
+
+function resolveAutomaticCustomCourseJsonPath() {
+  const playerDbFolder = typeof config.dbPaths?.playerDbFolder === 'string'
+    ? config.dbPaths.playerDbFolder.trim()
+    : '';
+
+  if (!playerDbFolder) {
+    return '';
+  }
+
+  const normalizedFolder = path.normalize(playerDbFolder);
+  const folderName = path.basename(normalizedFolder).toLowerCase();
+  const parentDir = path.dirname(normalizedFolder);
+  const parentName = path.basename(parentDir).toLowerCase();
+
+  if (folderName === 'player') {
+    return path.join(parentDir, 'table', 'default.json');
+  }
+
+  if (parentName === 'player' && folderName.startsWith('player')) {
+    return path.join(path.dirname(parentDir), 'table', 'default.json');
+  }
+
+  return '';
+}
+
+function syncCustomCourseJsonPath() {
+  ensureConfigDefaults();
+  config.customCourseJsonPath = resolveAutomaticCustomCourseJsonPath();
+  return config.customCourseJsonPath;
+}
+
+function normalizeCustomCourseTargetPath(targetFilePath) {
+  const explicitPath = typeof targetFilePath === 'string' ? targetFilePath.trim() : '';
+  const basePath = explicitPath || syncCustomCourseJsonPath();
+
+  if (!basePath) {
+    throw new Error('設定画面で beatoraja/player/player* を設定してください。保存先 default.json を自動判定できません。');
+  }
+
+  return basePath.toLowerCase().endsWith('.json') ? basePath : `${basePath}.json`;
+}
+
 function loadConfig() {
   console.log('設定ファイルの読み込みを開始:', configPath);
   
@@ -1447,23 +1521,8 @@ function loadConfig() {
   if (fs.existsSync(configPath)) {
     try {
       config = JSON.parse(fs.readFileSync(configPath));
-      if (typeof config.customCourseJsonPath !== 'string') {
-        config.customCourseJsonPath = '';
-      }
-      if (!Array.isArray(config.courseMetadata)) {
-        config.courseMetadata = [];
-      }
-      if (!config.dbPaths) {
-        config.dbPaths = {
-          score: '',
-          scorelog: '',
-          scoredatalog: '',
-          songdata: ''
-        };
-      }
-      if (!Array.isArray(config.difficultyTables)) {
-        config.difficultyTables = [];
-      }
+      ensureConfigDefaults();
+      syncCustomCourseJsonPath();
       console.log('既存の設定ファイルを読み込みました:', configPath);
       return;
     } catch (error) {
@@ -1518,6 +1577,7 @@ function createDefaultConfig() {
   // デフォルト設定を作成
   config = {
     dbPaths: {
+      playerDbFolder: '',
       score: '',
       scorelog: '',
       scoredatalog: '',
@@ -1541,6 +1601,9 @@ function createDefaultConfig() {
       }
     }
   }
+
+  ensureConfigDefaults();
+  syncCustomCourseJsonPath();
   
   // 設定ファイルを保存
   try {
@@ -1552,6 +1615,8 @@ function createDefaultConfig() {
 }
 
 function saveConfig() {
+  ensureConfigDefaults();
+  syncCustomCourseJsonPath();
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 }
 
@@ -2195,7 +2260,10 @@ ipcMain.handle('get-updated-songs', async (_, dateString) => {
 });
 
 // その他のIPCハンドラー
-ipcMain.handle('get-config', () => config);
+ipcMain.handle('get-config', () => {
+  syncCustomCourseJsonPath();
+  return config;
+});
 
 ipcMain.handle('update-config', (_, newConfig) => {
   console.log('update-configが呼ばれました');
@@ -2205,12 +2273,15 @@ ipcMain.handle('update-config', (_, newConfig) => {
   Object.assign(config, newConfig);
   console.log('マージ後のconfig:', JSON.stringify(config, null, 2));
   
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  saveConfig();
   console.log('config.jsonに書き込み完了:', configPath);
 });
 
 ipcMain.handle('set-config', (_, newPaths) => {
-  config.dbPaths = newPaths;
+  config.dbPaths = {
+    ...(config.dbPaths || {}),
+    ...(newPaths || {})
+  };
   saveConfig();
 });
 
@@ -2233,8 +2304,8 @@ ipcMain.handle('select-folder-path', async () => {
 // カスタムコース保存JSONファイルを選択
 ipcMain.handle('select-course-json-path', async () => {
   const defaultPath =
-    (typeof config.customCourseJsonPath === 'string' && config.customCourseJsonPath.trim() !== '')
-      ? config.customCourseJsonPath
+    (typeof syncCustomCourseJsonPath() === 'string' && syncCustomCourseJsonPath().trim() !== '')
+      ? syncCustomCourseJsonPath()
       : path.join(app.getPath('documents'), 'default.json');
 
   const result = await dialog.showSaveDialog({
@@ -2257,13 +2328,7 @@ ipcMain.handle('save-custom-course', async (_, courseData, targetFilePath) => {
       throw new Error('保存するコースデータが不正です。');
     }
 
-    if (!targetFilePath || typeof targetFilePath !== 'string') {
-      throw new Error('保存先ファイルパスが未指定です。');
-    }
-
-    const normalizedPath = targetFilePath.toLowerCase().endsWith('.json')
-      ? targetFilePath
-      : `${targetFilePath}.json`;
+    const normalizedPath = normalizeCustomCourseTargetPath(targetFilePath);
 
     const outputDir = path.dirname(normalizedPath);
     if (!fs.existsSync(outputDir)) {
@@ -2317,19 +2382,7 @@ ipcMain.handle('save-custom-course', async (_, courseData, targetFilePath) => {
 // カスタムコースJSONから既存コース一覧を読み込み
 ipcMain.handle('load-custom-course-file', async (_, targetFilePath) => {
   try {
-    if (!targetFilePath || typeof targetFilePath !== 'string') {
-      return {
-        success: true,
-        exists: false,
-        filePath: '',
-        tableName: '',
-        courses: []
-      };
-    }
-
-    const normalizedPath = targetFilePath.toLowerCase().endsWith('.json')
-      ? targetFilePath
-      : `${targetFilePath}.json`;
+    const normalizedPath = normalizeCustomCourseTargetPath(targetFilePath);
 
     if (!fs.existsSync(normalizedPath)) {
       return {
@@ -2431,10 +2484,6 @@ ipcMain.handle('delete-course-metadata', async (_, matchKey) => {
 // カスタムコースJSON内の既存コースを更新
 ipcMain.handle('update-custom-course', async (_, targetFilePath, courseIndex, courseData) => {
   try {
-    if (!targetFilePath || typeof targetFilePath !== 'string') {
-      throw new Error('保存先ファイルパスが未指定です。');
-    }
-
     if (!Number.isInteger(courseIndex) || courseIndex < 0) {
       throw new Error('更新対象のコース番号が不正です。');
     }
@@ -2443,9 +2492,7 @@ ipcMain.handle('update-custom-course', async (_, targetFilePath, courseIndex, co
       throw new Error('更新するコースデータが不正です。');
     }
 
-    const normalizedPath = targetFilePath.toLowerCase().endsWith('.json')
-      ? targetFilePath
-      : `${targetFilePath}.json`;
+    const normalizedPath = normalizeCustomCourseTargetPath(targetFilePath);
 
     if (!fs.existsSync(normalizedPath)) {
       throw new Error('保存先JSONが見つかりません。');
@@ -2494,17 +2541,11 @@ ipcMain.handle('update-custom-course', async (_, targetFilePath, courseIndex, co
 // カスタムコースJSONから既存コースを削除
 ipcMain.handle('delete-custom-course', async (_, targetFilePath, courseIndex) => {
   try {
-    if (!targetFilePath || typeof targetFilePath !== 'string') {
-      throw new Error('保存先ファイルパスが未指定です。');
-    }
-
     if (!Number.isInteger(courseIndex) || courseIndex < 0) {
       throw new Error('削除対象のコース番号が不正です。');
     }
 
-    const normalizedPath = targetFilePath.toLowerCase().endsWith('.json')
-      ? targetFilePath
-      : `${targetFilePath}.json`;
+    const normalizedPath = normalizeCustomCourseTargetPath(targetFilePath);
 
     if (!fs.existsSync(normalizedPath)) {
       throw new Error('保存先JSONが見つかりません。');

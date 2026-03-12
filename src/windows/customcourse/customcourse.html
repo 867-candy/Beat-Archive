@@ -16,115 +16,109 @@
       <a href="../settings/settings.html">設定</a>
     </nav>
 
-    <h1>Warmup カスタムコース作成</h1>
+    <h1>カスタムコース作成</h1>
 
-    <div class="setting-group">
-      <h3>基本設定</h3>
-      <div class="form-grid">
-        <div class="form-item">
-          <label for="courseNameInput">コース名</label>
-          <input type="text" id="courseNameInput" placeholder="例: warmup, warmup_hard, ude warm">
-        </div>
+    <h2 class="course-builder-heading">WarmUpMixコース作成</h2>
 
-        <div class="form-item">
-          <label for="tableSelect">使用する難易度表</label>
-          <select id="tableSelect">
-            <option value="">難易度表を選択してください</option>
-          </select>
-        </div>
-      </div>
-      <p class="hint">難易度表を選択すると、各ステージの難易度候補が自動で読み込まれます。</p>
-    </div>
+    <div class="setting-group course-builder-card">
+      <section class="builder-section">
+        <h3>基本設定</h3>
+        <div class="form-grid">
+          <div class="form-item">
+            <label for="courseNameInput">コース名</label>
+            <input type="text" id="courseNameInput" placeholder="例: warmup, warmup_hard, ude warm">
+          </div>
 
-    <div class="setting-group">
-      <h3>ステージ難易度</h3>
-      <div class="form-grid stage-grid">
-        <div class="form-item">
-          <label for="stage1Level">1st stage の難易度</label>
-          <select id="stage1Level"></select>
+          <div class="form-item">
+            <label for="tableSelect">使用する難易度表</label>
+            <select id="tableSelect">
+              <option value="">難易度表を選択してください</option>
+            </select>
+          </div>
         </div>
-        <div class="form-item">
-          <label for="stage2Level">2nd stage の難易度</label>
-          <select id="stage2Level"></select>
-        </div>
-        <div class="form-item">
-          <label for="stage3Level">3rd stage の難易度</label>
-          <select id="stage3Level"></select>
-        </div>
-        <div class="form-item">
-          <label for="stageFinalLevel">final stage の難易度</label>
-          <select id="stageFinalLevel"></select>
-        </div>
-      </div>
-    </div>
+        <p class="hint">難易度表を選択すると、各ステージの難易度候補が自動で読み込まれます。</p>
+      </section>
 
-    <div class="setting-group">
-      <h3>制約設定</h3>
-      <div class="form-grid">
-        <div class="form-item">
-          <label for="optionSetting">オプションの設定</label>
-          <select id="optionSetting">
-            <option value="CLASS">CLASS</option>
-            <option value="MIRROR">MIRROR</option>
-            <option value="RANDOM">RANDOM</option>
-          </select>
+      <section class="builder-section">
+        <h3>ステージ難易度</h3>
+        <div class="form-grid stage-grid">
+          <div class="form-item">
+            <label for="stage1Level">1st stage の難易度</label>
+            <select id="stage1Level"></select>
+          </div>
+          <div class="form-item">
+            <label for="stage2Level">2nd stage の難易度</label>
+            <select id="stage2Level"></select>
+          </div>
+          <div class="form-item">
+            <label for="stage3Level">3rd stage の難易度</label>
+            <select id="stage3Level"></select>
+          </div>
+          <div class="form-item">
+            <label for="stageFinalLevel">final stage の難易度</label>
+            <select id="stageFinalLevel"></select>
+          </div>
         </div>
+      </section>
 
-        <div class="form-item">
-          <label for="gaugeSetting">ゲージの設定</label>
-          <select id="gaugeSetting">
-            <option value="GAUGE_LR2">GAUGE_LR2</option>
-            <option value="GAUGE_7keys">GAUGE_7keys</option>
-            <option value="GAUGE_5keys">GAUGE_5keys</option>
-            <option value="GAUGE_9keys">GAUGE_9keys</option>
-            <option value="GAUGE_24keys">GAUGE_24keys</option>
-          </select>
+      <section class="builder-section builder-section--last">
+        <h3>制約設定</h3>
+        <div class="form-grid">
+          <div class="form-item">
+            <label for="optionSetting">オプションの設定</label>
+            <select id="optionSetting">
+              <option value="CLASS">CLASS</option>
+              <option value="MIRROR">MIRROR</option>
+              <option value="RANDOM">RANDOM</option>
+            </select>
+          </div>
+
+          <div class="form-item">
+            <label for="gaugeSetting">ゲージの設定</label>
+            <select id="gaugeSetting">
+              <option value="GAUGE_LR2">GAUGE_LR2</option>
+              <option value="GAUGE_7keys">GAUGE_7keys</option>
+              <option value="GAUGE_5keys">GAUGE_5keys</option>
+              <option value="GAUGE_9keys">GAUGE_9keys</option>
+              <option value="GAUGE_24keys">GAUGE_24keys</option>
+            </select>
+          </div>
+
+          <div class="form-item">
+            <label for="lnTypeSetting">LNタイプの設定</label>
+            <select id="lnTypeSetting">
+              <option value="LN">LN</option>
+              <option value="CN">CN</option>
+              <option value="HCN">HCN</option>
+            </select>
+          </div>
+
+          <div class="form-item">
+            <label for="noSpeedSetting">ノースピの設定</label>
+            <select id="noSpeedSetting">
+              <option value="">(なし)</option>
+              <option value="NO_SPEED">NO_SPEED</option>
+            </select>
+          </div>
+
+          <div class="form-item">
+            <label for="noGoodSetting">グッドの設定</label>
+            <select id="noGoodSetting">
+              <option value="">(なし)</option>
+              <option value="NO_GOOD">NO_GOOD</option>
+            </select>
+          </div>
+
+          <div class="form-item">
+            <label for="trophySetting">トロフィーの設定</label>
+            <select id="trophySetting">
+              <option value="bronze">ブロンズメダル</option>
+              <option value="silver">シルバーメダル</option>
+              <option value="gold" selected>ゴールドメダル</option>
+            </select>
+          </div>
         </div>
-
-        <div class="form-item">
-          <label for="lnTypeSetting">LNタイプの設定</label>
-          <select id="lnTypeSetting">
-            <option value="LN">LN</option>
-            <option value="CN">CN</option>
-            <option value="HCN">HCN</option>
-          </select>
-        </div>
-
-        <div class="form-item">
-          <label for="noSpeedSetting">ノースピの設定</label>
-          <select id="noSpeedSetting">
-            <option value="">(なし)</option>
-            <option value="NO_SPEED">NO_SPEED</option>
-          </select>
-        </div>
-
-        <div class="form-item">
-          <label for="noGoodSetting">グッドの設定</label>
-          <select id="noGoodSetting">
-            <option value="">(なし)</option>
-            <option value="NO_GOOD">NO_GOOD</option>
-          </select>
-        </div>
-
-        <div class="form-item">
-          <label for="trophySetting">トロフィーの設定</label>
-          <select id="trophySetting">
-            <option value="bronze">ブロンズメダル</option>
-            <option value="silver">シルバーメダル</option>
-            <option value="gold" selected>ゴールドメダル</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <div class="setting-group">
-      <h3>保存先</h3>
-      <div class="save-path-row">
-        <input type="text" id="savePathInput" placeholder="例: E:\\beatoraja0.8.4-jre-win64\\table\\default.json">
-        <button class="btn secondary" id="browseSavePathBtn">参照</button>
-        <button class="btn secondary" id="loadExistingCoursesBtn">既存コース読込</button>
-      </div>
-      <p class="hint">既存のdefault.jsonを指定した場合は、course配列に追記します。</p>
+      </section>
     </div>
 
     <div class="actions">
@@ -144,10 +138,10 @@
     <div class="preview" id="existingCoursesSection">
       <div class="existing-header">
         <h3>既存コース一覧</h3>
-        <div class="existing-summary" id="existingCourseSummary">保存先JSONを読み込むと既存コースを表示します</div>
+        <div class="existing-summary" id="existingCourseSummary">設定画面の Player* フォルダ設定から default.json を自動で読み込みます</div>
       </div>
       <ul id="existingCourseList">
-        <li class="no-results">まだ既存コースを読み込んでいません</li>
+        <li class="no-results">Player* フォルダが未設定です</li>
       </ul>
     </div>
   </div>

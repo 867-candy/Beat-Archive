@@ -1,5 +1,11 @@
 /* カスタムコース画面固有スタイル */
 
+.course-builder-heading {
+  margin: 10px 0 14px;
+  color: #1f2d3d;
+  font-size: 1.4rem;
+}
+
 .setting-group {
   margin-bottom: 24px;
   padding: 20px;
@@ -11,6 +17,23 @@
 .setting-group h3 {
   margin-top: 0;
   color: #2c3e50;
+}
+
+.course-builder-card {
+  display: grid;
+  gap: 0;
+}
+
+.builder-section {
+  padding: 0 0 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid #d9e3ea;
+}
+
+.builder-section--last {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: none;
 }
 
 .form-grid {
@@ -38,20 +61,6 @@
   margin: 10px 0 0;
   color: #6c757d;
   font-size: 0.9em;
-}
-
-.save-path-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.save-path-row input {
-  margin-bottom: 0;
-}
-
-.save-path-row button {
-  white-space: nowrap;
 }
 
 .actions {
@@ -281,15 +290,6 @@
 }
 
 @media (max-width: 768px) {
-  .save-path-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .save-path-row button {
-    width: 100%;
-  }
-
   .existing-header,
   .existing-course-header {
     flex-direction: column;
