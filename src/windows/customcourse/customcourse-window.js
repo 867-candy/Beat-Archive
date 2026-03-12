@@ -126,6 +126,30 @@ function findCourseMetadata(course) {
   return state.courseMetadata.find((m) => m.matchKey === key) || null;
 }
 
+function buildCourseMetadataPayload({ course, stages, table, tableData, savedFilePath, previousMetadata = null }) {
+  const symbol = tableData?.header?.symbol || previousMetadata?.tableSymbol || '';
+
+  return {
+    matchKey: computeMatchKey(course),
+    name: course.name || previousMetadata?.name || '',
+    savedFilePath: savedFilePath || previousMetadata?.savedFilePath || '',
+    tableUrl: table?.url || previousMetadata?.tableUrl || '',
+    tableName: table?.name || previousMetadata?.tableName || '',
+    tableSymbol: symbol,
+    createdAt: previousMetadata?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    stages: stages.map((stage, index) => ({
+      stageLabel: stage.label || getStageLabel(index, stages.length),
+      levelKey: stage.levelKey,
+      difficultyLabel: String(stage.levelKey).startsWith(symbol)
+        ? stage.levelKey
+        : symbol ? `${symbol}${stage.levelKey}` : String(stage.levelKey),
+      sha256: course.hash[index]?.sha256 || '',
+      charthash: course.hash[index]?.charthash || ''
+    }))
+  };
+}
+
 function getCourseSongHashKeys(song) {
   return [song?.charthash, song?.sha256, song?.md5]
     .filter((value) => typeof value === 'string')
@@ -358,17 +382,34 @@ function renderExistingCourses() {
     toggleButton.appendChild(titleWrap);
     toggleButton.appendChild(indicatorEl);
 
+    const actionsEl = document.createElement('div');
+    actionsEl.className = 'existing-course-actions';
+
+    if (beatArchiveMeta?.tableUrl && Array.isArray(beatArchiveMeta.stages) && beatArchiveMeta.stages.length > 0) {
+      const shuffleButton = document.createElement('button');
+      shuffleButton.type = 'button';
+      shuffleButton.className = 'existing-course-action existing-course-shuffle';
+      shuffleButton.textContent = '再選曲';
+      shuffleButton.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        await shuffleExistingCourse(index, course.name || '[No Name]');
+      });
+      actionsEl.appendChild(shuffleButton);
+    }
+
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
-    deleteButton.className = 'existing-course-delete';
+    deleteButton.className = 'existing-course-action existing-course-delete';
     deleteButton.textContent = '削除';
     deleteButton.addEventListener('click', async (event) => {
       event.stopPropagation();
       await deleteExistingCourse(index, course.name || '[No Name]');
     });
 
+    actionsEl.appendChild(deleteButton);
+
     headerEl.appendChild(toggleButton);
-    headerEl.appendChild(deleteButton);
+    headerEl.appendChild(actionsEl);
     li.appendChild(headerEl);
 
     if (state.expandedExistingCourses.has(index)) {
@@ -678,9 +719,15 @@ function extractSongsByLevel(tableData) {
   };
 }
 
-async function filterSongsByLocalExistence() {
+async function filterSongsByLocalExistence(songsByLevelInput, levelKeysInput) {
+  const originalSongsByLevel = songsByLevelInput instanceof Map ? songsByLevelInput : new Map();
+  const originalLevelKeys = Array.isArray(levelKeysInput) ? levelKeysInput.slice() : [];
+
   if (!window.api?.checkSongsExist) {
-    return;
+    return {
+      songsByLevel: new Map(originalSongsByLevel),
+      levelKeys: originalLevelKeys
+    };
   }
 
   const allSha256 = [];
@@ -688,7 +735,7 @@ async function filterSongsByLocalExistence() {
   const sha256Set = new Set();
   const md5Set = new Set();
 
-  state.songsByLevel.forEach((songs) => {
+  originalSongsByLevel.forEach((songs) => {
     songs.forEach((song) => {
       if (song.sha256 && !sha256Set.has(song.sha256)) {
         allSha256.push(song.sha256);
@@ -702,7 +749,10 @@ async function filterSongsByLocalExistence() {
   });
 
   if (allSha256.length === 0 && allMd5.length === 0) {
-    return;
+    return {
+      songsByLevel: new Map(originalSongsByLevel),
+      levelKeys: originalLevelKeys
+    };
   }
 
   try {
@@ -716,42 +766,55 @@ async function filterSongsByLocalExistence() {
       return false;
     };
 
+    const filteredSongsByLevel = new Map();
     const filteredLevelKeys = [];
-    state.songsByLevel.forEach((songs, levelKey) => {
+    originalLevelKeys.forEach((levelKey) => {
+      const songs = originalSongsByLevel.get(levelKey) || [];
       const filtered = songs.filter(songExists);
       if (filtered.length > 0) {
-        state.songsByLevel.set(levelKey, filtered);
+        filteredSongsByLevel.set(levelKey, filtered);
         filteredLevelKeys.push(levelKey);
-      } else {
-        state.songsByLevel.delete(levelKey);
       }
     });
 
-    state.levelKeys = state.levelKeys.filter((key) => filteredLevelKeys.includes(key));
+    return {
+      songsByLevel: filteredSongsByLevel,
+      levelKeys: filteredLevelKeys
+    };
   } catch (error) {
     console.error('所持楽曲チェックエラー:', error);
+    return {
+      songsByLevel: new Map(originalSongsByLevel),
+      levelKeys: originalLevelKeys
+    };
   }
 }
 
-async function loadTableDataByUrl(tableUrl) {
+async function loadCourseSourceTable(tableUrl) {
   const table = state.difficultyTables.find((item) => item.url === tableUrl);
   if (!table) {
-    throw new Error('選択された難易度表が見つかりません。');
+    throw new Error('コース作成時の難易度表が現在の設定に見つかりません。');
   }
+
+  const tableData = await window.api.loadDifficultyTable(table.url);
+  const extracted = extractSongsByLevel(tableData);
+  const filtered = await filterSongsByLocalExistence(extracted.songsByLevel, extracted.levelKeys);
+
+  return {
+    table,
+    tableData,
+    songsByLevel: filtered.songsByLevel,
+    levelKeys: filtered.levelKeys
+  };
+}
+
+async function loadTableDataByUrl(tableUrl) {
+  const { table, tableData, songsByLevel, levelKeys } = await loadCourseSourceTable(tableUrl);
 
   state.selectedTable = table;
-  const tableData = await window.api.loadDifficultyTable(table.url);
   state.selectedTableData = tableData;
-
-  const extracted = extractSongsByLevel(tableData);
-  state.songsByLevel = extracted.songsByLevel;
-  state.levelKeys = extracted.levelKeys;
-
-  if (state.levelKeys.length === 0) {
-    throw new Error('難易度表からレベル情報を取得できませんでした。');
-  }
-
-  await filterSongsByLocalExistence();
+  state.songsByLevel = songsByLevel;
+  state.levelKeys = levelKeys;
 
   if (state.levelKeys.length === 0) {
     throw new Error('所持楽曲が見つかりませんでした。songdata.dbの設定を確認してください。');
@@ -789,8 +852,8 @@ function validateForm() {
   return true;
 }
 
-function pickRandomSongForLevel(levelKey, usedKeys) {
-  const songs = state.songsByLevel.get(levelKey) || [];
+function pickRandomSongForLevel(levelKey, usedKeys, songsByLevel = state.songsByLevel) {
+  const songs = songsByLevel.get(levelKey) || [];
   if (songs.length === 0) {
     throw new Error(`${formatLevelLabel(levelKey)} の曲が見つかりません。`);
   }
@@ -805,6 +868,98 @@ function pickRandomSongForLevel(levelKey, usedKeys) {
   usedKeys.add(getSongUniqueKey(selectedSong));
 
   return selectedSong;
+}
+
+async function shuffleExistingCourse(courseIndex, courseName) {
+  const course = state.existingCourses[courseIndex];
+  const metadata = findCourseMetadata(course);
+  const targetFilePath = state.existingCourseFilePath || document.getElementById('savePathInput').value.trim();
+
+  if (!course || !metadata) {
+    showStatus('このコースは再選曲に必要な保存情報がありません。', 'error');
+    return;
+  }
+
+  if (!metadata.tableUrl || !Array.isArray(metadata.stages) || metadata.stages.length === 0) {
+    showStatus('このコースには再選曲に必要な難易度情報が保存されていません。', 'error');
+    return;
+  }
+
+  if (!targetFilePath) {
+    showStatus('保存先JSONファイルが見つかりません。', 'error');
+    return;
+  }
+
+  showStatus(`コースを再選曲中です: ${courseName}`, 'info');
+
+  try {
+    const { table, tableData, songsByLevel } = await loadCourseSourceTable(metadata.tableUrl);
+    const usedSongKeys = new Set();
+    const shuffledStages = [];
+
+    metadata.stages.forEach((stageMeta, index) => {
+      const levelKey = normalizeLevel(stageMeta.levelKey);
+      if (!levelKey) {
+        throw new Error(`${getStageLabel(index, metadata.stages.length)} の難易度情報が不正です。`);
+      }
+
+      const availableSongs = songsByLevel.get(levelKey) || [];
+      if (availableSongs.length === 0) {
+        throw new Error(`${stageMeta.difficultyLabel || formatLevelLabel(levelKey)} に再選曲できる所持曲がありません。`);
+      }
+
+      const selectedSong = pickRandomSongForLevel(levelKey, usedSongKeys, songsByLevel);
+      shuffledStages.push({
+        label: stageMeta.stageLabel || getStageLabel(index, metadata.stages.length),
+        levelKey,
+        song: selectedSong
+      });
+    });
+
+    const shuffledHashes = await Promise.all(
+      shuffledStages.map((stage) => buildCourseHashEntry(stage.song))
+    );
+
+    const updatedCourse = {
+      ...course,
+      hash: shuffledHashes
+    };
+
+    const previousMatchKey = computeMatchKey(course);
+    const result = await window.api.updateCustomCourse(targetFilePath, courseIndex, updatedCourse);
+
+    if (!result || !result.success) {
+      throw new Error(result?.error || 'コース更新に失敗しました。');
+    }
+
+    const nextMetadata = buildCourseMetadataPayload({
+      course: updatedCourse,
+      stages: shuffledStages,
+      table,
+      tableData,
+      savedFilePath: result.filePath || targetFilePath,
+      previousMetadata: metadata
+    });
+
+    if (window.api.deleteCourseMetadata && previousMatchKey && previousMatchKey !== nextMetadata.matchKey) {
+      await window.api.deleteCourseMetadata(previousMatchKey);
+    }
+
+    if (window.api.saveCourseMetadata) {
+      await window.api.saveCourseMetadata(nextMetadata);
+    }
+
+    state.courseMetadata = state.courseMetadata.filter(
+      (item) => item.matchKey !== previousMatchKey && item.matchKey !== nextMetadata.matchKey
+    );
+    state.courseMetadata.push(nextMetadata);
+
+    await loadExistingCourses();
+    showStatus(`コースを再選曲しました: ${courseName}`, 'success');
+  } catch (error) {
+    console.error('コース再選曲エラー:', error);
+    showStatus(`コース再選曲に失敗しました: ${error.message}`, 'error');
+  }
 }
 
 async function generateCoursePreview() {
@@ -878,29 +1033,17 @@ async function saveCourseToJson() {
 
     document.getElementById('savePathInput').value = result.filePath;
 
-    const matchKey = computeMatchKey(state.generatedCourse);
-    if (matchKey && window.api.saveCourseMetadata) {
-      const symbol = state.selectedTableData?.header?.symbol || '';
-      const metadata = {
-        matchKey,
-        name: state.generatedCourse.name,
-        savedFilePath: result.filePath,
-        tableUrl: state.selectedTable?.url || '',
-        tableName: state.selectedTable?.name || '',
-        tableSymbol: symbol,
-        createdAt: new Date().toISOString(),
-        stages: state.generatedStages.map((stage, i) => ({
-          stageLabel: stage.label,
-          levelKey: stage.levelKey,
-          difficultyLabel: String(stage.levelKey).startsWith(symbol)
-            ? stage.levelKey
-            : symbol ? `${symbol}${stage.levelKey}` : String(stage.levelKey),
-          sha256: state.generatedCourse.hash[i]?.sha256 || '',
-          charthash: state.generatedCourse.hash[i]?.charthash || ''
-        }))
-      };
+    const metadata = buildCourseMetadataPayload({
+      course: state.generatedCourse,
+      stages: state.generatedStages,
+      table: state.selectedTable,
+      tableData: state.selectedTableData,
+      savedFilePath: result.filePath
+    });
+
+    if (metadata.matchKey && window.api.saveCourseMetadata) {
       await window.api.saveCourseMetadata(metadata);
-      const existingIdx = state.courseMetadata.findIndex((m) => m.matchKey === matchKey);
+      const existingIdx = state.courseMetadata.findIndex((m) => m.matchKey === metadata.matchKey);
       if (existingIdx >= 0) {
         state.courseMetadata[existingIdx] = metadata;
       } else {

@@ -2428,6 +2428,69 @@ ipcMain.handle('delete-course-metadata', async (_, matchKey) => {
   }
 });
 
+// カスタムコースJSON内の既存コースを更新
+ipcMain.handle('update-custom-course', async (_, targetFilePath, courseIndex, courseData) => {
+  try {
+    if (!targetFilePath || typeof targetFilePath !== 'string') {
+      throw new Error('保存先ファイルパスが未指定です。');
+    }
+
+    if (!Number.isInteger(courseIndex) || courseIndex < 0) {
+      throw new Error('更新対象のコース番号が不正です。');
+    }
+
+    if (!courseData || typeof courseData !== 'object') {
+      throw new Error('更新するコースデータが不正です。');
+    }
+
+    const normalizedPath = targetFilePath.toLowerCase().endsWith('.json')
+      ? targetFilePath
+      : `${targetFilePath}.json`;
+
+    if (!fs.existsSync(normalizedPath)) {
+      throw new Error('保存先JSONが見つかりません。');
+    }
+
+    const existingText = fs.readFileSync(normalizedPath, 'utf8').trim();
+    const parsed = existingText === '' ? { course: [] } : JSON.parse(existingText);
+
+    let rootData;
+    if (Array.isArray(parsed)) {
+      rootData = { course: parsed };
+    } else if (parsed && typeof parsed === 'object') {
+      rootData = parsed;
+      if (!Array.isArray(rootData.course)) {
+        rootData.course = [];
+      }
+    } else {
+      throw new Error('既存JSONの形式を解釈できません。');
+    }
+
+    if (courseIndex >= rootData.course.length) {
+      throw new Error('更新対象のコースが存在しません。');
+    }
+
+    rootData.course[courseIndex] = courseData;
+    fs.writeFileSync(normalizedPath, JSON.stringify(rootData, null, 2), 'utf8');
+
+    config.customCourseJsonPath = normalizedPath;
+    saveConfig();
+
+    return {
+      success: true,
+      filePath: normalizedPath,
+      totalCourses: rootData.course.length,
+      updatedCourseName: courseData.name || ''
+    };
+  } catch (error) {
+    console.error('カスタムコース更新エラー:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
 // カスタムコースJSONから既存コースを削除
 ipcMain.handle('delete-custom-course', async (_, targetFilePath, courseIndex) => {
   try {

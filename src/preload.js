@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('api', {
   selectCourseJsonPath: () => ipcRenderer.invoke('select-course-json-path'),
   saveCustomCourse: (courseData, targetFilePath) => ipcRenderer.invoke('save-custom-course', courseData, targetFilePath),
   loadCustomCourseFile: (targetFilePath) => ipcRenderer.invoke('load-custom-course-file', targetFilePath),
+  updateCustomCourse: (targetFilePath, courseIndex, courseData) => ipcRenderer.invoke('update-custom-course', targetFilePath, courseIndex, courseData),
   deleteCustomCourse: (targetFilePath, courseIndex) => ipcRenderer.invoke('delete-custom-course', targetFilePath, courseIndex),
   saveCourseMetadata: (metadata) => ipcRenderer.invoke('save-course-metadata', metadata),
   deleteCourseMetadata: (matchKey) => ipcRenderer.invoke('delete-course-metadata', matchKey),
