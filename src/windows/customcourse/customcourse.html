@@ -18,15 +18,15 @@
 
     <h1>カスタムコース作成</h1>
 
-    <h2 class="course-builder-heading">WarmUpMixコース作成</h2>
-
+    <h2 class="course-builder-heading">Warm Up Mixコース作成</h2>
+    <p>※Warm Up Mixコース作成から作成されたコースはIRに登録されません。</p>
     <div class="setting-group course-builder-card">
       <section class="builder-section">
         <h3>基本設定</h3>
         <div class="form-grid">
           <div class="form-item">
             <label for="courseNameInput">コース名</label>
-            <input type="text" id="courseNameInput" placeholder="例: warmup, warmup_hard, ude warm">
+            <input type="text" id="courseNameInput" placeholder="例: Warm Up MIX (★1~4)">
           </div>
 
           <div class="form-item">
@@ -65,27 +65,27 @@
         <h3>制約設定</h3>
         <div class="form-grid">
           <div class="form-item">
-            <label for="optionSetting">オプションの設定</label>
+            <label for="optionSetting">プレイオプション許可設定</label>
             <select id="optionSetting">
-              <option value="CLASS">CLASS</option>
-              <option value="MIRROR">MIRROR</option>
-              <option value="RANDOM">RANDOM</option>
+              <option value="CLASS">正規のみ</option>
+              <option value="MIRROR">MIRRORを許可</option>
+              <option value="RANDOM" selected>RANDOMを許可</option>
             </select>
           </div>
 
           <div class="form-item">
-            <label for="gaugeSetting">ゲージの設定</label>
+            <label for="gaugeSetting">ゲージ設定</label>
             <select id="gaugeSetting">
-              <option value="GAUGE_LR2">GAUGE_LR2</option>
-              <option value="GAUGE_7keys">GAUGE_7keys</option>
-              <option value="GAUGE_5keys">GAUGE_5keys</option>
-              <option value="GAUGE_9keys">GAUGE_9keys</option>
-              <option value="GAUGE_24keys">GAUGE_24keys</option>
+              <option value="GAUGE_LR2">LR2段位ゲージ</option>
+              <option value="GAUGE_7keys">7keys段位ゲージ</option>
+              <option value="GAUGE_5keys">5keys段位ゲージ</option>
+              <option value="GAUGE_9keys">9keys段位ゲージ</option>
+              <option value="GAUGE_24keys">24keys段位ゲージ</option>
             </select>
           </div>
 
           <div class="form-item">
-            <label for="lnTypeSetting">LNタイプの設定</label>
+            <label for="lnTypeSetting">LNタイプ設定</label>
             <select id="lnTypeSetting">
               <option value="LN">LN</option>
               <option value="CN">CN</option>
@@ -94,7 +94,7 @@
           </div>
 
           <div class="form-item">
-            <label for="noSpeedSetting">ノースピの設定</label>
+            <label for="noSpeedSetting">NO_SPEED設定</label>
             <select id="noSpeedSetting">
               <option value="">(なし)</option>
               <option value="NO_SPEED">NO_SPEED</option>
@@ -102,28 +102,23 @@
           </div>
 
           <div class="form-item">
-            <label for="noGoodSetting">グッドの設定</label>
+            <label for="noGoodSetting">NO_GOOD設定</label>
             <select id="noGoodSetting">
               <option value="">(なし)</option>
               <option value="NO_GOOD">NO_GOOD</option>
-            </select>
-          </div>
-
-          <div class="form-item">
-            <label for="trophySetting">トロフィーの設定</label>
-            <select id="trophySetting">
-              <option value="bronze">ブロンズメダル</option>
-              <option value="silver">シルバーメダル</option>
-              <option value="gold" selected>ゴールドメダル</option>
+              <option value="NO_GREAT">NO_GREAT</option>
             </select>
           </div>
         </div>
       </section>
     </div>
 
+    <div class="editing-notice" id="editingNotice" hidden></div>
+
     <div class="actions">
       <button class="btn" id="generateBtn">ランダム選曲してプレビュー</button>
       <button class="btn primary" id="saveBtn">JSONに保存</button>
+      <button class="btn secondary" id="cancelEditBtn" type="button" hidden>編集解除</button>
     </div>
 
     <div class="status" id="status"></div>
@@ -137,8 +132,11 @@
 
     <div class="preview" id="existingCoursesSection">
       <div class="existing-header">
-        <h3>既存コース一覧</h3>
+        <h3>コース一覧</h3>
         <div class="existing-summary" id="existingCourseSummary">設定画面の Player* フォルダ設定から default.json を自動で読み込みます</div>
+      </div>
+      <div class="existing-bulk-actions">
+        <button class="btn secondary" id="bulkShuffleWarmUpMixBtn" type="button">Warm Up Mix一括再選曲</button>
       </div>
       <ul id="existingCourseList">
         <li class="no-results">Player* フォルダが未設定です</li>

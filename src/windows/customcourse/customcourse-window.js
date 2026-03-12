@@ -41,11 +41,42 @@ const state = {
   courseDifficultyLookup: new Map(),
   courseDifficultyLookupReady: false,
   expandedExistingCourses: new Set(),
-  courseMetadata: []
+  courseMetadata: [],
+  editingCourseIndex: null,
+  editingCourseName: '',
+  editingOriginalMatchKey: '',
+  editingCourseMetadata: null
 };
 
 function getResolvedCourseFilePath() {
   return state.existingCourseFilePath || state.resolvedCourseFilePath || '';
+}
+
+function isEditingCourse() {
+  return Number.isInteger(state.editingCourseIndex) && state.editingCourseIndex >= 0;
+}
+
+function updateEditingUi() {
+  const noticeEl = document.getElementById('editingNotice');
+  const saveBtn = document.getElementById('saveBtn');
+  const cancelBtn = document.getElementById('cancelEditBtn');
+
+  if (!noticeEl || !saveBtn || !cancelBtn) {
+    return;
+  }
+
+  if (isEditingCourse()) {
+    noticeEl.hidden = false;
+    noticeEl.textContent = `編集中: ${state.editingCourseName} / 保存すると既存コースを上書きします`;
+    saveBtn.textContent = '内容を更新';
+    cancelBtn.hidden = false;
+    return;
+  }
+
+  noticeEl.hidden = true;
+  noticeEl.textContent = '';
+  saveBtn.textContent = 'JSONに保存';
+  cancelBtn.hidden = true;
 }
 
 function showStatus(message, type = 'info') {
@@ -272,16 +303,6 @@ function buildConstraintList() {
 }
 
 function buildTrophyList() {
-  const selected = document.getElementById('trophySetting').value;
-
-  if (selected === 'bronze') {
-    return [{ ...TROPHY_PRESETS.bronze }];
-  }
-
-  if (selected === 'silver') {
-    return [{ ...TROPHY_PRESETS.bronze }, { ...TROPHY_PRESETS.silver }];
-  }
-
   return [
     { ...TROPHY_PRESETS.bronze },
     { ...TROPHY_PRESETS.silver },
@@ -291,6 +312,74 @@ function buildTrophyList() {
 
 function getCourseName() {
   return document.getElementById('courseNameInput').value.trim();
+}
+
+function pickConstraintValue(constraints, candidates, fallback = '') {
+  return candidates.find((candidate) => constraints.includes(candidate)) || fallback;
+}
+
+function applyConstraintSelections(constraints) {
+  const normalizedConstraints = Array.isArray(constraints) ? constraints : [];
+
+  document.getElementById('optionSetting').value = pickConstraintValue(
+    normalizedConstraints,
+    ['CLASS', 'MIRROR', 'RANDOM'],
+    'RANDOM'
+  );
+  document.getElementById('gaugeSetting').value = pickConstraintValue(
+    normalizedConstraints,
+    ['GAUGE_LR2', 'GAUGE_7keys', 'GAUGE_5keys', 'GAUGE_9keys', 'GAUGE_24keys'],
+    'GAUGE_LR2'
+  );
+  document.getElementById('lnTypeSetting').value = pickConstraintValue(
+    normalizedConstraints,
+    ['LN', 'CN', 'HCN'],
+    'LN'
+  );
+  document.getElementById('noSpeedSetting').value = normalizedConstraints.includes('NO_SPEED') ? 'NO_SPEED' : '';
+  document.getElementById('noGoodSetting').value = pickConstraintValue(
+    normalizedConstraints,
+    ['NO_GOOD', 'NO_GREAT'],
+    ''
+  );
+  
+}
+
+function ensureSelectHasOption(select, value, label) {
+  if (!select || !value) {
+    return;
+  }
+
+  const exists = Array.from(select.options).some((option) => option.value === value);
+  if (!exists) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label || value;
+    select.appendChild(option);
+  }
+
+  select.value = value;
+}
+
+function buildGeneratedStagesFromCourse(course, metadata) {
+  const hashes = Array.isArray(course?.hash) ? course.hash : [];
+
+  return hashes.map((song, index) => ({
+    label: metadata?.stages?.[index]?.stageLabel || getStageLabel(index, hashes.length),
+    levelKey: metadata?.stages?.[index]?.levelKey || '',
+    song
+  }));
+}
+
+function buildCoursePayloadForSave() {
+  return {
+    ...state.generatedCourse,
+    class: 'bms.player.beatoraja.CourseData',
+    name: getCourseName(),
+    constraint: buildConstraintList(),
+    trophy: buildTrophyList(),
+    release: false
+  };
 }
 
 function getStageLabel(index, totalCount) {
@@ -306,10 +395,60 @@ function resetGeneratedCourse() {
   state.generatedStages = [];
 }
 
+function clearEditingState(options = {}) {
+  const { resetPreview = false } = options;
+
+  state.editingCourseIndex = null;
+  state.editingCourseName = '';
+  state.editingOriginalMatchKey = '';
+  state.editingCourseMetadata = null;
+  updateEditingUi();
+
+  if (resetPreview) {
+    resetGeneratedCourse();
+    renderPreview();
+  }
+}
+
+function handleCourseStructureChange() {
+  resetGeneratedCourse();
+  renderPreview();
+}
+
+function handleCourseSettingsChange() {
+  if (state.generatedCourse) {
+    state.generatedCourse = buildCoursePayloadForSave();
+  }
+  renderPreview();
+}
+
+function getWarmUpMixTaggedCourses() {
+  return state.existingCourses
+    .map((course, index) => ({
+      course,
+      index,
+      metadata: findCourseMetadata(course)
+    }))
+    .filter((entry) => Boolean(entry.metadata));
+}
+
+function getWarmUpMixShuffleTargets() {
+  return getWarmUpMixTaggedCourses();
+}
+
 function renderExistingCourses() {
   const summaryEl = document.getElementById('existingCourseSummary');
   const listEl = document.getElementById('existingCourseList');
+  const bulkShuffleButton = document.getElementById('bulkShuffleWarmUpMixBtn');
   listEl.innerHTML = '';
+
+  const warmUpMixTargets = getWarmUpMixShuffleTargets();
+  if (bulkShuffleButton) {
+    bulkShuffleButton.disabled = warmUpMixTargets.length === 0;
+    bulkShuffleButton.textContent = warmUpMixTargets.length > 0
+      ? `Warm Up Mix一括再選曲 (${warmUpMixTargets.length})`
+      : 'Warm Up Mix一括再選曲';
+  }
 
   if (!state.existingCourseFilePath) {
     summaryEl.textContent = '設定画面の Player* フォルダ設定から default.json を自動で読み込みます';
@@ -378,8 +517,15 @@ function renderExistingCourses() {
     if (beatArchiveMeta) {
       const badgeEl = document.createElement('span');
       badgeEl.className = 'existing-course-badge';
-      badgeEl.textContent = 'Beat Archive';
+      badgeEl.textContent = 'Warm Up Mix';
       nameEl.appendChild(badgeEl);
+
+      if (typeof beatArchiveMeta.tableName === 'string' && beatArchiveMeta.tableName.trim() !== '') {
+        const tableBadgeEl = document.createElement('span');
+        tableBadgeEl.className = 'existing-course-badge existing-course-badge--table';
+        tableBadgeEl.textContent = beatArchiveMeta.tableName.trim();
+        nameEl.appendChild(tableBadgeEl);
+      }
     }
 
     titleWrap.appendChild(nameEl);
@@ -391,6 +537,17 @@ function renderExistingCourses() {
     actionsEl.className = 'existing-course-actions';
 
     if (beatArchiveMeta?.tableUrl && Array.isArray(beatArchiveMeta.stages) && beatArchiveMeta.stages.length > 0) {
+      const editButton = document.createElement('button');
+      editButton.type = 'button';
+      editButton.className = 'existing-course-action existing-course-edit';
+      editButton.textContent = isEditingCourse() && state.editingCourseIndex === index ? '編集中' : '編集';
+      editButton.disabled = isEditingCourse() && state.editingCourseIndex === index;
+      editButton.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        await editExistingCourse(index);
+      });
+      actionsEl.appendChild(editButton);
+
       const shuffleButton = document.createElement('button');
       shuffleButton.type = 'button';
       shuffleButton.className = 'existing-course-action existing-course-shuffle';
@@ -540,6 +697,15 @@ async function deleteExistingCourse(courseIndex, courseName) {
       state.courseMetadata = state.courseMetadata.filter((m) => m.matchKey !== matchKey);
     }
 
+    if (isEditingCourse()) {
+      if (state.editingCourseIndex === courseIndex) {
+        clearEditingState({ resetPreview: true });
+      } else if (state.editingCourseIndex > courseIndex) {
+        state.editingCourseIndex -= 1;
+        updateEditingUi();
+      }
+    }
+
     state.expandedExistingCourses = new Set(
       Array.from(state.expandedExistingCourses)
         .filter((index) => index !== courseIndex)
@@ -645,7 +811,7 @@ function populateStageLevelSelects() {
     if (previousValue && levelKeys.includes(previousValue)) {
       select.value = previousValue;
     } else {
-      select.value = levelKeys[Math.min(index, levelKeys.length - 1)];
+      select.value = levelKeys[0];
     }
   });
 }
@@ -874,96 +1040,219 @@ function pickRandomSongForLevel(levelKey, usedKeys, songsByLevel = state.songsBy
   return selectedSong;
 }
 
-async function shuffleExistingCourse(courseIndex, courseName) {
+async function editExistingCourse(courseIndex) {
+  const course = state.existingCourses[courseIndex];
+  const metadata = findCourseMetadata(course);
+
+  if (!course || !metadata) {
+    showStatus('編集できるのは Warm Up Mix で作成したコースのみです。', 'error');
+    return;
+  }
+
+  if (!metadata.tableUrl || !Array.isArray(metadata.stages) || metadata.stages.length === 0) {
+    showStatus('このコースには編集に必要な難易度情報が保存されていません。', 'error');
+    return;
+  }
+
+  try {
+    document.getElementById('courseNameInput').value = course.name || '';
+    applyConstraintSelections(course.constraint);
+
+    const tableSelect = document.getElementById('tableSelect');
+    tableSelect.value = metadata.tableUrl;
+    await loadTableDataByUrl(metadata.tableUrl);
+
+    STAGE_CONFIG.forEach((stage, index) => {
+      const stageMeta = metadata.stages[index];
+      if (!stageMeta) {
+        return;
+      }
+
+      const levelKey = normalizeLevel(stageMeta.levelKey);
+      const select = document.getElementById(stage.id);
+      ensureSelectHasOption(select, levelKey, stageMeta.difficultyLabel || levelKey);
+    });
+
+    state.generatedCourse = {
+      ...course,
+      class: 'bms.player.beatoraja.CourseData',
+      name: getCourseName(),
+      constraint: buildConstraintList(),
+      trophy: buildTrophyList(),
+      release: false
+    };
+    state.generatedStages = buildGeneratedStagesFromCourse(course, metadata);
+    state.editingCourseIndex = courseIndex;
+    state.editingCourseName = course.name || '[No Name]';
+    state.editingOriginalMatchKey = computeMatchKey(course);
+    state.editingCourseMetadata = metadata;
+
+    updateEditingUi();
+    renderPreview();
+
+    const cardEl = document.querySelector('.course-builder-card');
+    if (cardEl) {
+      cardEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    showStatus(`編集中: ${state.editingCourseName}。難易度を変更した場合は保存前にプレビューを更新してください。`, 'info');
+  } catch (error) {
+    console.error('コース編集読込エラー:', error);
+    clearEditingState();
+    showStatus(`コースの編集準備に失敗しました: ${error.message}`, 'error');
+  }
+}
+
+async function reshuffleCourseAtIndex(courseIndex) {
   const course = state.existingCourses[courseIndex];
   const metadata = findCourseMetadata(course);
   const targetFilePath = getResolvedCourseFilePath();
 
   if (!course || !metadata) {
-    showStatus('このコースは再選曲に必要な保存情報がありません。', 'error');
-    return;
+    throw new Error('このコースは再選曲に必要な保存情報がありません。');
   }
 
   if (!metadata.tableUrl || !Array.isArray(metadata.stages) || metadata.stages.length === 0) {
-    showStatus('このコースには再選曲に必要な難易度情報が保存されていません。', 'error');
-    return;
+    throw new Error('このコースには再選曲に必要な難易度情報が保存されていません。');
   }
 
   if (!targetFilePath) {
-    showStatus('保存先JSONファイルが見つかりません。', 'error');
-    return;
+    throw new Error('保存先JSONファイルが見つかりません。');
   }
 
+  const { table, tableData, songsByLevel } = await loadCourseSourceTable(metadata.tableUrl);
+  const usedSongKeys = new Set();
+  const shuffledStages = [];
+
+  metadata.stages.forEach((stageMeta, index) => {
+    const levelKey = normalizeLevel(stageMeta.levelKey);
+    if (!levelKey) {
+      throw new Error(`${getStageLabel(index, metadata.stages.length)} の難易度情報が不正です。`);
+    }
+
+    const availableSongs = songsByLevel.get(levelKey) || [];
+    if (availableSongs.length === 0) {
+      throw new Error(`${stageMeta.difficultyLabel || formatLevelLabel(levelKey)} に再選曲できる所持曲がありません。`);
+    }
+
+    const selectedSong = pickRandomSongForLevel(levelKey, usedSongKeys, songsByLevel);
+    shuffledStages.push({
+      label: stageMeta.stageLabel || getStageLabel(index, metadata.stages.length),
+      levelKey,
+      song: selectedSong
+    });
+  });
+
+  const shuffledHashes = await Promise.all(
+    shuffledStages.map((stage) => buildCourseHashEntry(stage.song))
+  );
+
+  const updatedCourse = {
+    ...course,
+    hash: shuffledHashes
+  };
+
+  const previousMatchKey = computeMatchKey(course);
+  const result = await window.api.updateCustomCourse(targetFilePath, courseIndex, updatedCourse);
+
+  if (!result || !result.success) {
+    throw new Error(result?.error || 'コース更新に失敗しました。');
+  }
+
+  const nextMetadata = buildCourseMetadataPayload({
+    course: updatedCourse,
+    stages: shuffledStages,
+    table,
+    tableData,
+    savedFilePath: result.filePath || targetFilePath,
+    previousMetadata: metadata
+  });
+
+  if (window.api.deleteCourseMetadata && previousMatchKey && previousMatchKey !== nextMetadata.matchKey) {
+    await window.api.deleteCourseMetadata(previousMatchKey);
+  }
+
+  if (window.api.saveCourseMetadata) {
+    await window.api.saveCourseMetadata(nextMetadata);
+  }
+
+  state.courseMetadata = state.courseMetadata.filter(
+    (item) => item.matchKey !== previousMatchKey && item.matchKey !== nextMetadata.matchKey
+  );
+  state.courseMetadata.push(nextMetadata);
+  state.existingCourses[courseIndex] = updatedCourse;
+
+  return {
+    courseName: updatedCourse.name || '[No Name]'
+  };
+}
+
+async function shuffleExistingCourse(courseIndex, courseName) {
   showStatus(`コースを再選曲中です: ${courseName}`, 'info');
 
   try {
-    const { table, tableData, songsByLevel } = await loadCourseSourceTable(metadata.tableUrl);
-    const usedSongKeys = new Set();
-    const shuffledStages = [];
-
-    metadata.stages.forEach((stageMeta, index) => {
-      const levelKey = normalizeLevel(stageMeta.levelKey);
-      if (!levelKey) {
-        throw new Error(`${getStageLabel(index, metadata.stages.length)} の難易度情報が不正です。`);
-      }
-
-      const availableSongs = songsByLevel.get(levelKey) || [];
-      if (availableSongs.length === 0) {
-        throw new Error(`${stageMeta.difficultyLabel || formatLevelLabel(levelKey)} に再選曲できる所持曲がありません。`);
-      }
-
-      const selectedSong = pickRandomSongForLevel(levelKey, usedSongKeys, songsByLevel);
-      shuffledStages.push({
-        label: stageMeta.stageLabel || getStageLabel(index, metadata.stages.length),
-        levelKey,
-        song: selectedSong
-      });
-    });
-
-    const shuffledHashes = await Promise.all(
-      shuffledStages.map((stage) => buildCourseHashEntry(stage.song))
-    );
-
-    const updatedCourse = {
-      ...course,
-      hash: shuffledHashes
-    };
-
-    const previousMatchKey = computeMatchKey(course);
-    const result = await window.api.updateCustomCourse(targetFilePath, courseIndex, updatedCourse);
-
-    if (!result || !result.success) {
-      throw new Error(result?.error || 'コース更新に失敗しました。');
-    }
-
-    const nextMetadata = buildCourseMetadataPayload({
-      course: updatedCourse,
-      stages: shuffledStages,
-      table,
-      tableData,
-      savedFilePath: result.filePath || targetFilePath,
-      previousMetadata: metadata
-    });
-
-    if (window.api.deleteCourseMetadata && previousMatchKey && previousMatchKey !== nextMetadata.matchKey) {
-      await window.api.deleteCourseMetadata(previousMatchKey);
-    }
-
-    if (window.api.saveCourseMetadata) {
-      await window.api.saveCourseMetadata(nextMetadata);
-    }
-
-    state.courseMetadata = state.courseMetadata.filter(
-      (item) => item.matchKey !== previousMatchKey && item.matchKey !== nextMetadata.matchKey
-    );
-    state.courseMetadata.push(nextMetadata);
-
+    const result = await reshuffleCourseAtIndex(courseIndex);
     await loadExistingCourses();
-    showStatus(`コースを再選曲しました: ${courseName}`, 'success');
+    showStatus(`コースを再選曲しました: ${result.courseName}`, 'success');
   } catch (error) {
     console.error('コース再選曲エラー:', error);
     showStatus(`コース再選曲に失敗しました: ${error.message}`, 'error');
   }
+}
+
+async function shuffleAllWarmUpMixCourses() {
+  const targets = getWarmUpMixShuffleTargets();
+
+  if (targets.length === 0) {
+    showStatus('一括再選曲の対象となる Warm Up Mix コースがありません。', 'info');
+    return;
+  }
+
+  const shouldShuffle = await window.api.showConfirmDialog(
+    `Warm Up Mix コース ${targets.length} 件を一括再選曲しますか？`,
+    'Warm Up Mix 一括再選曲'
+  );
+
+  if (!shouldShuffle) {
+    return;
+  }
+
+  const failures = [];
+  let successCount = 0;
+
+  for (let i = 0; i < targets.length; i += 1) {
+    const target = targets[i];
+    const name = target.course?.name || '[No Name]';
+    showStatus(`Warm Up Mix 一括再選曲中... (${i + 1}/${targets.length})`, 'info');
+
+    try {
+      await reshuffleCourseAtIndex(target.index);
+      successCount += 1;
+    } catch (error) {
+      failures.push(`${name}: ${error.message}`);
+    }
+  }
+
+  if (isEditingCourse() && targets.some((target) => target.index === state.editingCourseIndex)) {
+    clearEditingState({ resetPreview: true });
+  }
+
+  await loadExistingCourses();
+
+  if (failures.length === 0) {
+    showStatus(`Warm Up Mix コース ${successCount} 件を再選曲しました。`, 'success');
+    return;
+  }
+
+  console.error('Warm Up Mix 一括再選曲失敗:', failures);
+  const failurePreview = failures.slice(0, 2).join(' / ');
+
+  if (successCount === 0) {
+    showStatus(`Warm Up Mix 一括再選曲に失敗しました: ${failurePreview}`, 'error');
+    return;
+  }
+
+  showStatus(`Warm Up Mix 一括再選曲: 成功 ${successCount} 件 / 失敗 ${failures.length} 件`, 'info');
 }
 
 async function generateCoursePreview() {
@@ -1014,6 +1303,10 @@ async function generateCoursePreview() {
 
 async function saveCourseToJson() {
   clearStatus();
+  const wasEditing = isEditingCourse();
+  const editingCourseIndex = state.editingCourseIndex;
+  const previousMatchKey = state.editingOriginalMatchKey;
+  const previousMetadata = state.editingCourseMetadata;
 
   if (!state.generatedCourse) {
     const generated = await generateCoursePreview();
@@ -1029,7 +1322,10 @@ async function saveCourseToJson() {
   }
 
   try {
-    const result = await window.api.saveCustomCourse(state.generatedCourse, savePath);
+    const courseToSave = buildCoursePayloadForSave();
+    const result = wasEditing
+      ? await window.api.updateCustomCourse(savePath, editingCourseIndex, courseToSave)
+      : await window.api.saveCustomCourse(courseToSave, savePath);
 
     if (!result || !result.success) {
       throw new Error(result?.error || '保存処理で不明なエラーが発生しました。');
@@ -1037,25 +1333,36 @@ async function saveCourseToJson() {
     state.resolvedCourseFilePath = result.filePath || savePath;
 
     const metadata = buildCourseMetadataPayload({
-      course: state.generatedCourse,
+      course: courseToSave,
       stages: state.generatedStages,
       table: state.selectedTable,
       tableData: state.selectedTableData,
-      savedFilePath: result.filePath
+      savedFilePath: result.filePath,
+      previousMetadata: wasEditing ? previousMetadata : null
     });
+
+    if (wasEditing && previousMatchKey && previousMatchKey !== metadata.matchKey && window.api.deleteCourseMetadata) {
+      await window.api.deleteCourseMetadata(previousMatchKey);
+    }
 
     if (metadata.matchKey && window.api.saveCourseMetadata) {
       await window.api.saveCourseMetadata(metadata);
-      const existingIdx = state.courseMetadata.findIndex((m) => m.matchKey === metadata.matchKey);
-      if (existingIdx >= 0) {
-        state.courseMetadata[existingIdx] = metadata;
-      } else {
-        state.courseMetadata.push(metadata);
-      }
+      state.courseMetadata = state.courseMetadata.filter(
+        (item) => item.matchKey !== metadata.matchKey && item.matchKey !== previousMatchKey
+      );
+      state.courseMetadata.push(metadata);
+    } else if (wasEditing && previousMatchKey) {
+      state.courseMetadata = state.courseMetadata.filter((item) => item.matchKey !== previousMatchKey);
     }
 
     await loadExistingCourses();
-    showStatus(`保存完了: ${result.filePath} (登録コース数: ${result.totalCourses})`, 'success');
+
+    if (wasEditing) {
+      clearEditingState({ resetPreview: true });
+      showStatus(`コースを更新しました: ${courseToSave.name}`, 'success');
+    } else {
+      showStatus(`保存完了: ${result.filePath} (登録コース数: ${result.totalCourses})`, 'success');
+    }
   } catch (error) {
     console.error('保存エラー:', error);
     showStatus(`保存に失敗しました: ${error.message}`, 'error');
@@ -1088,32 +1395,37 @@ async function handleTableChange(event) {
 }
 
 function setupEventListeners() {
-  document.getElementById('courseNameInput').addEventListener('input', resetGeneratedCourse);
+  document.getElementById('courseNameInput').addEventListener('input', handleCourseSettingsChange);
   document.getElementById('tableSelect').addEventListener('change', handleTableChange);
 
   STAGE_CONFIG.forEach((stage) => {
-    document.getElementById(stage.id).addEventListener('change', resetGeneratedCourse);
+    document.getElementById(stage.id).addEventListener('change', handleCourseStructureChange);
   });
 
-  document.getElementById('optionSetting').addEventListener('change', resetGeneratedCourse);
-  document.getElementById('gaugeSetting').addEventListener('change', resetGeneratedCourse);
-  document.getElementById('lnTypeSetting').addEventListener('change', resetGeneratedCourse);
-  document.getElementById('noSpeedSetting').addEventListener('change', resetGeneratedCourse);
-  document.getElementById('noGoodSetting').addEventListener('change', resetGeneratedCourse);
-  document.getElementById('trophySetting').addEventListener('change', resetGeneratedCourse);
+  document.getElementById('optionSetting').addEventListener('change', handleCourseSettingsChange);
+  document.getElementById('gaugeSetting').addEventListener('change', handleCourseSettingsChange);
+  document.getElementById('lnTypeSetting').addEventListener('change', handleCourseSettingsChange);
+  document.getElementById('noSpeedSetting').addEventListener('change', handleCourseSettingsChange);
+  document.getElementById('noGoodSetting').addEventListener('change', handleCourseSettingsChange);
 
   document.getElementById('generateBtn').addEventListener('click', generateCoursePreview);
   document.getElementById('saveBtn').addEventListener('click', saveCourseToJson);
+  document.getElementById('cancelEditBtn').addEventListener('click', () => {
+    clearStatus();
+    clearEditingState({ resetPreview: true });
+  });
+  document.getElementById('bulkShuffleWarmUpMixBtn').addEventListener('click', shuffleAllWarmUpMixCourses);
 }
 
 async function initialize() {
   renderPreview();
   renderExistingCourses();
   setupEventListeners();
+  updateEditingUi();
 
   const courseNameInput = document.getElementById('courseNameInput');
   if (!courseNameInput.value.trim()) {
-    courseNameInput.value = 'warmup';
+    courseNameInput.value = 'Warm Up Mix ()';
   }
 
   try {
