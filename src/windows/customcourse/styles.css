@@ -118,39 +118,111 @@
   border-left: 4px solid #3498db;
 }
 
-.existing-course-item {
-  border-left: 4px solid #27ae60;
+.existing-course-item--ours {
+  border-left-color: #8e44ad;
 }
 
-.existing-course-title {
+.existing-course-item--ours .existing-course-toggle:hover {
+  background: #faf5ff;
+}
+
+.existing-course-item--ours .existing-course-indicator {
+  color: #8e44ad;
+}
+
+.existing-course-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #8e44ad;
+  color: #ffffff;
+  font-size: 0.72em;
+  font-weight: bold;
+  vertical-align: middle;
+  letter-spacing: 0.03em;
+}
+
+.existing-course-item {
+  border-left: 4px solid #27ae60;
+  background: #ffffff;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.existing-course-header {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.existing-course-toggle {
+  flex: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.existing-course-toggle:hover {
+  background: #f4fbf6;
+}
+
+.existing-course-title-wrap {
+  min-width: 0;
+}
+
+.existing-course-name {
+  margin-bottom: 4px;
   font-weight: bold;
   color: #2c3e50;
 }
 
-.existing-course-release {
-  font-size: 0.85em;
-  color: #6c757d;
-  font-weight: normal;
-}
-
 .existing-course-meta {
-  margin-bottom: 8px;
   color: #495057;
   font-size: 0.92em;
 }
 
-.existing-course-songs {
+.existing-course-indicator {
+  flex-shrink: 0;
+  width: 24px;
+  color: #27ae60;
+  font-size: 1.2em;
+  text-align: center;
+}
+
+.existing-course-delete {
+  flex-shrink: 0;
+  align-self: center;
+  margin-right: 14px;
+  padding: 8px 12px;
+  border: 1px solid #dc3545;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #dc3545;
+  cursor: pointer;
+}
+
+.existing-course-delete:hover {
+  background: #fff5f5;
+}
+
+.existing-course-details {
   display: grid;
-  gap: 6px;
+  gap: 8px;
+  padding: 0 16px 16px;
+  border-top: 1px solid #e9ecef;
+  background: #fcfcfc;
 }
 
 .existing-course-song {
-  padding: 8px 10px;
+  padding: 10px 12px;
   background: #f8f9fa;
   border-radius: 4px;
 }
@@ -158,11 +230,21 @@
 .existing-course-song-stage {
   font-size: 0.8em;
   color: #6c757d;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .existing-course-song-title {
   color: #2c3e50;
+  margin-bottom: 3px;
+}
+
+.existing-course-song-difficulty {
+  color: #495057;
+  font-size: 0.9em;
+}
+
+.existing-course-details .no-results {
+  margin-top: 12px;
 }
 
 .preview-stage {
@@ -191,9 +273,18 @@
   }
 
   .existing-header,
-  .existing-course-title {
+  .existing-course-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+  }
+
+  .existing-course-toggle {
+    padding-bottom: 8px;
+  }
+
+  .existing-course-delete {
+    width: calc(100% - 28px);
+    margin: 0 14px 14px;
   }
 
   .existing-summary {

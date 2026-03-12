@@ -36,7 +36,11 @@ const state = {
   generatedStages: [],
   existingCourses: [],
   existingCourseFilePath: '',
-  existingCourseTableName: ''
+  existingCourseTableName: '',
+  courseDifficultyLookup: new Map(),
+  courseDifficultyLookupReady: false,
+  expandedExistingCourses: new Set(),
+  courseMetadata: []
 };
 
 function showStatus(message, type = 'info') {
@@ -102,6 +106,78 @@ function getSongUniqueKey(song) {
     song.path ||
     `${song.title || ''}__${song.artist || ''}__${song.subtitle || ''}`
   );
+}
+
+function buildConstraintText(constraints) {
+  return Array.isArray(constraints) && constraints.length > 0
+    ? constraints.join(', ')
+    : '(なし)';
+}
+
+function computeMatchKey(course) {
+  const hashes = Array.isArray(course?.hash) ? course.hash : [];
+  const keys = hashes.map((h) => h?.charthash || h?.sha256 || '').filter(Boolean);
+  return keys.join('|');
+}
+
+function findCourseMetadata(course) {
+  const key = computeMatchKey(course);
+  if (!key) return null;
+  return state.courseMetadata.find((m) => m.matchKey === key) || null;
+}
+
+function getCourseSongHashKeys(song) {
+  return [song?.charthash, song?.sha256, song?.md5]
+    .filter((value) => typeof value === 'string')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function registerCourseDifficultyEntry(lookup, song, difficultyLabel) {
+  getCourseSongHashKeys(song).forEach((key) => {
+    if (!lookup.has(key)) {
+      lookup.set(key, difficultyLabel);
+    }
+  });
+}
+
+async function ensureCourseDifficultyLookup() {
+  if (state.courseDifficultyLookupReady) {
+    return;
+  }
+
+  const lookup = new Map();
+
+  for (const table of state.difficultyTables) {
+    if (!table?.url) {
+      continue;
+    }
+
+    try {
+      const tableData = await window.api.loadDifficultyTable(table.url);
+      const { songsByLevel, levelKeys } = extractSongsByLevel(tableData);
+      const symbol = tableData?.header?.symbol || '';
+
+      levelKeys.forEach((levelKey) => {
+        const difficultyLabel = symbol ? `${symbol}${levelKey}` : String(levelKey);
+        const songs = songsByLevel.get(levelKey) || [];
+        songs.forEach((song) => registerCourseDifficultyEntry(lookup, song, difficultyLabel));
+      });
+    } catch (error) {
+      console.error('既存コース用難易度表読込エラー:', table?.name || table?.url, error);
+    }
+  }
+
+  state.courseDifficultyLookup = lookup;
+  state.courseDifficultyLookupReady = true;
+}
+
+function resolveCourseSongDifficulty(song) {
+  const difficulty = getCourseSongHashKeys(song)
+    .map((key) => state.courseDifficultyLookup.get(key))
+    .find(Boolean);
+
+  return difficulty || '難易度不明';
 }
 
 function appendIfDefined(target, key, value) {
@@ -230,55 +306,111 @@ function renderExistingCourses() {
 
   summaryEl.textContent = `${state.existingCourseFilePath}${tableNameText} / コース ${state.existingCourses.length} 件`;
 
-  state.existingCourses.forEach((course) => {
+  state.existingCourses.forEach((course, index) => {
     const li = document.createElement('li');
     li.className = 'existing-course-item';
 
-    const titleEl = document.createElement('div');
-    titleEl.className = 'existing-course-title';
+    const beatArchiveMeta = findCourseMetadata(course);
+    if (beatArchiveMeta) {
+      li.classList.add('existing-course-item--ours');
+    }
 
-    const nameEl = document.createElement('span');
-    nameEl.textContent = course.name || '[No Name]';
+    const headerEl = document.createElement('div');
+    headerEl.className = 'existing-course-header';
 
-    const releaseEl = document.createElement('span');
-    releaseEl.className = 'existing-course-release';
-    releaseEl.textContent = `release: ${course.release === false ? 'false' : 'true / 未指定'}`;
-
-    titleEl.appendChild(nameEl);
-    titleEl.appendChild(releaseEl);
-
-    const metaEl = document.createElement('div');
-    metaEl.className = 'existing-course-meta';
-    const constraints = Array.isArray(course.constraint) && course.constraint.length > 0
-      ? course.constraint.join(', ')
-      : '(なし)';
-    const trophyCount = Array.isArray(course.trophy) ? course.trophy.length : 0;
-    metaEl.textContent = `制約: ${constraints} / Trophy数: ${trophyCount}`;
-
-    const songsWrap = document.createElement('div');
-    songsWrap.className = 'existing-course-songs';
-
-    const hashes = Array.isArray(course.hash) ? course.hash : [];
-    hashes.forEach((song, index) => {
-      const songEl = document.createElement('div');
-      songEl.className = 'existing-course-song';
-
-      const stageEl = document.createElement('div');
-      stageEl.className = 'existing-course-song-stage';
-      stageEl.textContent = getStageLabel(index, hashes.length);
-
-      const songTitleEl = document.createElement('div');
-      songTitleEl.className = 'existing-course-song-title';
-      songTitleEl.textContent = formatSongTitle(song);
-
-      songEl.appendChild(stageEl);
-      songEl.appendChild(songTitleEl);
-      songsWrap.appendChild(songEl);
+    const toggleButton = document.createElement('button');
+    toggleButton.type = 'button';
+    toggleButton.className = 'existing-course-toggle';
+    toggleButton.setAttribute('aria-expanded', state.expandedExistingCourses.has(index) ? 'true' : 'false');
+    toggleButton.addEventListener('click', () => {
+      if (state.expandedExistingCourses.has(index)) {
+        state.expandedExistingCourses.delete(index);
+      } else {
+        state.expandedExistingCourses.add(index);
+      }
+      renderExistingCourses();
     });
 
-    li.appendChild(titleEl);
-    li.appendChild(metaEl);
-    li.appendChild(songsWrap);
+    const titleWrap = document.createElement('div');
+    titleWrap.className = 'existing-course-title-wrap';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'existing-course-name';
+    nameEl.textContent = course.name || '[No Name]';
+
+    const settingsEl = document.createElement('div');
+    settingsEl.className = 'existing-course-meta';
+    settingsEl.textContent = `設定: ${buildConstraintText(course.constraint)}`;
+
+    const indicatorEl = document.createElement('span');
+    indicatorEl.className = 'existing-course-indicator';
+    indicatorEl.textContent = state.expandedExistingCourses.has(index) ? '-' : '+';
+
+    if (beatArchiveMeta) {
+      const badgeEl = document.createElement('span');
+      badgeEl.className = 'existing-course-badge';
+      badgeEl.textContent = 'Beat Archive';
+      nameEl.appendChild(badgeEl);
+    }
+
+    titleWrap.appendChild(nameEl);
+    titleWrap.appendChild(settingsEl);
+    toggleButton.appendChild(titleWrap);
+    toggleButton.appendChild(indicatorEl);
+
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'existing-course-delete';
+    deleteButton.textContent = '削除';
+    deleteButton.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      await deleteExistingCourse(index, course.name || '[No Name]');
+    });
+
+    headerEl.appendChild(toggleButton);
+    headerEl.appendChild(deleteButton);
+    li.appendChild(headerEl);
+
+    if (state.expandedExistingCourses.has(index)) {
+      const detailWrap = document.createElement('div');
+      detailWrap.className = 'existing-course-details';
+
+      const hashes = Array.isArray(course.hash) ? course.hash : [];
+      if (hashes.length === 0) {
+        const emptyEl = document.createElement('div');
+        emptyEl.className = 'no-results';
+        emptyEl.textContent = 'このコースにはステージ情報がありません';
+        detailWrap.appendChild(emptyEl);
+      } else {
+        hashes.forEach((song, songIndex) => {
+          const songEl = document.createElement('div');
+          songEl.className = 'existing-course-song';
+
+          const stageEl = document.createElement('div');
+          stageEl.className = 'existing-course-song-stage';
+          stageEl.textContent = getStageLabel(songIndex, hashes.length);
+
+          const songTitleEl = document.createElement('div');
+          songTitleEl.className = 'existing-course-song-title';
+          songTitleEl.textContent = formatSongTitle(song);
+
+          const difficultyEl = document.createElement('div');
+          difficultyEl.className = 'existing-course-song-difficulty';
+          const difficultyText = beatArchiveMeta?.stages?.[songIndex]?.difficultyLabel
+            ? beatArchiveMeta.stages[songIndex].difficultyLabel
+            : resolveCourseSongDifficulty(song);
+          difficultyEl.textContent = `難易度: ${difficultyText}`;
+
+          songEl.appendChild(stageEl);
+          songEl.appendChild(songTitleEl);
+          songEl.appendChild(difficultyEl);
+          detailWrap.appendChild(songEl);
+        });
+      }
+
+      li.appendChild(detailWrap);
+    }
+
     listEl.appendChild(li);
   });
 }
@@ -292,6 +424,7 @@ async function loadExistingCourses(options = {}) {
     state.existingCourses = [];
     state.existingCourseFilePath = '';
     state.existingCourseTableName = '';
+    state.expandedExistingCourses = new Set();
     renderExistingCourses();
     return;
   }
@@ -306,7 +439,15 @@ async function loadExistingCourses(options = {}) {
     state.existingCourses = Array.isArray(result.courses) ? result.courses : [];
     state.existingCourseFilePath = result.filePath || savePath;
     state.existingCourseTableName = result.tableName || '';
+    state.expandedExistingCourses = new Set(
+      Array.from(state.expandedExistingCourses).filter((index) => index < state.existingCourses.length)
+    );
     savePathInput.value = state.existingCourseFilePath || savePath;
+
+    if (state.existingCourses.length > 0 && state.difficultyTables.length > 0) {
+      await ensureCourseDifficultyLookup();
+    }
+
     renderExistingCourses();
 
     if (showStatusMessage) {
@@ -321,6 +462,50 @@ async function loadExistingCourses(options = {}) {
     if (showStatusMessage) {
       showStatus(`既存コースの読込に失敗しました: ${error.message}`, 'error');
     }
+  }
+}
+
+async function deleteExistingCourse(courseIndex, courseName) {
+  const targetFilePath = state.existingCourseFilePath || document.getElementById('savePathInput').value.trim();
+  if (!targetFilePath) {
+    showStatus('削除対象の保存先JSONが見つかりません。', 'error');
+    return;
+  }
+
+  const shouldDelete = await window.api.showConfirmDialog(
+    `コース「${courseName}」を削除しますか？`,
+    'コースの削除'
+  );
+
+  if (!shouldDelete) {
+    return;
+  }
+
+  try {
+    const courseToDelete = state.existingCourses[courseIndex];
+    const matchKey = computeMatchKey(courseToDelete);
+
+    const result = await window.api.deleteCustomCourse(targetFilePath, courseIndex);
+    if (!result || !result.success) {
+      throw new Error(result?.error || 'コース削除に失敗しました。');
+    }
+
+    if (matchKey && window.api.deleteCourseMetadata) {
+      await window.api.deleteCourseMetadata(matchKey);
+      state.courseMetadata = state.courseMetadata.filter((m) => m.matchKey !== matchKey);
+    }
+
+    state.expandedExistingCourses = new Set(
+      Array.from(state.expandedExistingCourses)
+        .filter((index) => index !== courseIndex)
+        .map((index) => (index > courseIndex ? index - 1 : index))
+    );
+
+    await loadExistingCourses();
+    showStatus(`コースを削除しました: ${courseName} (残り ${result.totalCourses} 件)`, 'success');
+  } catch (error) {
+    console.error('コース削除エラー:', error);
+    showStatus(`コース削除に失敗しました: ${error.message}`, 'error');
   }
 }
 
@@ -493,6 +678,61 @@ function extractSongsByLevel(tableData) {
   };
 }
 
+async function filterSongsByLocalExistence() {
+  if (!window.api?.checkSongsExist) {
+    return;
+  }
+
+  const allSha256 = [];
+  const allMd5 = [];
+  const sha256Set = new Set();
+  const md5Set = new Set();
+
+  state.songsByLevel.forEach((songs) => {
+    songs.forEach((song) => {
+      if (song.sha256 && !sha256Set.has(song.sha256)) {
+        allSha256.push(song.sha256);
+        sha256Set.add(song.sha256);
+      }
+      if (song.md5 && !md5Set.has(song.md5)) {
+        allMd5.push(song.md5);
+        md5Set.add(song.md5);
+      }
+    });
+  });
+
+  if (allSha256.length === 0 && allMd5.length === 0) {
+    return;
+  }
+
+  try {
+    const result = await window.api.checkSongsExist(allSha256, allMd5);
+    const existingSha256 = new Set(result?.existingSha256 || []);
+    const existingMd5 = new Set(result?.existingMd5 || []);
+
+    const songExists = (song) => {
+      if (song.sha256 && existingSha256.has(song.sha256)) return true;
+      if (song.md5 && existingMd5.has(song.md5)) return true;
+      return false;
+    };
+
+    const filteredLevelKeys = [];
+    state.songsByLevel.forEach((songs, levelKey) => {
+      const filtered = songs.filter(songExists);
+      if (filtered.length > 0) {
+        state.songsByLevel.set(levelKey, filtered);
+        filteredLevelKeys.push(levelKey);
+      } else {
+        state.songsByLevel.delete(levelKey);
+      }
+    });
+
+    state.levelKeys = state.levelKeys.filter((key) => filteredLevelKeys.includes(key));
+  } catch (error) {
+    console.error('所持楽曲チェックエラー:', error);
+  }
+}
+
 async function loadTableDataByUrl(tableUrl) {
   const table = state.difficultyTables.find((item) => item.url === tableUrl);
   if (!table) {
@@ -509,6 +749,12 @@ async function loadTableDataByUrl(tableUrl) {
 
   if (state.levelKeys.length === 0) {
     throw new Error('難易度表からレベル情報を取得できませんでした。');
+  }
+
+  await filterSongsByLocalExistence();
+
+  if (state.levelKeys.length === 0) {
+    throw new Error('所持楽曲が見つかりませんでした。songdata.dbの設定を確認してください。');
   }
 
   populateStageLevelSelects();
@@ -631,6 +877,37 @@ async function saveCourseToJson() {
     }
 
     document.getElementById('savePathInput').value = result.filePath;
+
+    const matchKey = computeMatchKey(state.generatedCourse);
+    if (matchKey && window.api.saveCourseMetadata) {
+      const symbol = state.selectedTableData?.header?.symbol || '';
+      const metadata = {
+        matchKey,
+        name: state.generatedCourse.name,
+        savedFilePath: result.filePath,
+        tableUrl: state.selectedTable?.url || '',
+        tableName: state.selectedTable?.name || '',
+        tableSymbol: symbol,
+        createdAt: new Date().toISOString(),
+        stages: state.generatedStages.map((stage, i) => ({
+          stageLabel: stage.label,
+          levelKey: stage.levelKey,
+          difficultyLabel: String(stage.levelKey).startsWith(symbol)
+            ? stage.levelKey
+            : symbol ? `${symbol}${stage.levelKey}` : String(stage.levelKey),
+          sha256: state.generatedCourse.hash[i]?.sha256 || '',
+          charthash: state.generatedCourse.hash[i]?.charthash || ''
+        }))
+      };
+      await window.api.saveCourseMetadata(metadata);
+      const existingIdx = state.courseMetadata.findIndex((m) => m.matchKey === matchKey);
+      if (existingIdx >= 0) {
+        state.courseMetadata[existingIdx] = metadata;
+      } else {
+        state.courseMetadata.push(metadata);
+      }
+    }
+
     await loadExistingCourses();
     showStatus(`保存完了: ${result.filePath} (登録コース数: ${result.totalCourses})`, 'success');
   } catch (error) {
@@ -717,16 +994,19 @@ async function initialize() {
   try {
     const config = await window.api.getConfig();
 
+    state.difficultyTables = (config.difficultyTables || [])
+      .slice()
+      .sort((a, b) => (a.priority || 999) - (b.priority || 999));
+    state.courseDifficultyLookup = new Map();
+    state.courseDifficultyLookupReady = false;
+    state.courseMetadata = Array.isArray(config.courseMetadata) ? config.courseMetadata : [];
+
+    populateTableSelect();
+
     if (typeof config.customCourseJsonPath === 'string' && config.customCourseJsonPath.trim() !== '') {
       document.getElementById('savePathInput').value = config.customCourseJsonPath;
       await loadExistingCourses();
     }
-
-    state.difficultyTables = (config.difficultyTables || [])
-      .slice()
-      .sort((a, b) => (a.priority || 999) - (b.priority || 999));
-
-    populateTableSelect();
 
     if (state.difficultyTables.length === 0) {
       showStatus('難易度表が未設定です。先に設定画面で難易度表を追加してください。', 'error');

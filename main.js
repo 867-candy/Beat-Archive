@@ -1435,6 +1435,7 @@ let config = {
     songdata: ''
   },
   customCourseJsonPath: '',
+  courseMetadata: [],
   lastScreenshotPath: null,
   lastScreenshotDirectory: null
 };
@@ -1448,6 +1449,9 @@ function loadConfig() {
       config = JSON.parse(fs.readFileSync(configPath));
       if (typeof config.customCourseJsonPath !== 'string') {
         config.customCourseJsonPath = '';
+      }
+      if (!Array.isArray(config.courseMetadata)) {
+        config.courseMetadata = [];
       }
       if (!config.dbPaths) {
         config.dbPaths = {
@@ -1520,6 +1524,7 @@ function createDefaultConfig() {
       songdata: ''
     },
     customCourseJsonPath: '',
+    courseMetadata: [],
     difficultyTables: []
   };
   
@@ -2384,6 +2389,104 @@ ipcMain.handle('load-custom-course-file', async (_, targetFilePath) => {
   }
 });
 
+// Beat Archive 側コースメタデータを保存
+ipcMain.handle('save-course-metadata', async (_, metadata) => {
+  try {
+    if (!Array.isArray(config.courseMetadata)) {
+      config.courseMetadata = [];
+    }
+
+    const index = config.courseMetadata.findIndex((item) => item.matchKey === metadata.matchKey);
+    if (index >= 0) {
+      config.courseMetadata[index] = metadata;
+    } else {
+      config.courseMetadata.push(metadata);
+    }
+
+    saveConfig();
+    return { success: true };
+  } catch (error) {
+    console.error('save-course-metadata error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Beat Archive 側コースメタデータを削除
+ipcMain.handle('delete-course-metadata', async (_, matchKey) => {
+  try {
+    if (!Array.isArray(config.courseMetadata)) {
+      config.courseMetadata = [];
+    } else {
+      config.courseMetadata = config.courseMetadata.filter((item) => item.matchKey !== matchKey);
+    }
+
+    saveConfig();
+    return { success: true };
+  } catch (error) {
+    console.error('delete-course-metadata error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// カスタムコースJSONから既存コースを削除
+ipcMain.handle('delete-custom-course', async (_, targetFilePath, courseIndex) => {
+  try {
+    if (!targetFilePath || typeof targetFilePath !== 'string') {
+      throw new Error('保存先ファイルパスが未指定です。');
+    }
+
+    if (!Number.isInteger(courseIndex) || courseIndex < 0) {
+      throw new Error('削除対象のコース番号が不正です。');
+    }
+
+    const normalizedPath = targetFilePath.toLowerCase().endsWith('.json')
+      ? targetFilePath
+      : `${targetFilePath}.json`;
+
+    if (!fs.existsSync(normalizedPath)) {
+      throw new Error('保存先JSONが見つかりません。');
+    }
+
+    const existingText = fs.readFileSync(normalizedPath, 'utf8').trim();
+    const parsed = existingText === '' ? { course: [] } : JSON.parse(existingText);
+
+    let rootData;
+    if (Array.isArray(parsed)) {
+      rootData = { course: parsed };
+    } else if (parsed && typeof parsed === 'object') {
+      rootData = parsed;
+      if (!Array.isArray(rootData.course)) {
+        rootData.course = [];
+      }
+    } else {
+      throw new Error('既存JSONの形式を解釈できません。');
+    }
+
+    if (courseIndex >= rootData.course.length) {
+      throw new Error('削除対象のコースが存在しません。');
+    }
+
+    const deletedCourse = rootData.course.splice(courseIndex, 1)[0] || null;
+    fs.writeFileSync(normalizedPath, JSON.stringify(rootData, null, 2), 'utf8');
+
+    config.customCourseJsonPath = normalizedPath;
+    saveConfig();
+
+    return {
+      success: true,
+      filePath: normalizedPath,
+      totalCourses: rootData.course.length,
+      deletedCourseName: deletedCourse?.name || ''
+    };
+  } catch (error) {
+    console.error('カスタムコース削除エラー:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
 // パス結合
 ipcMain.handle('join-path', (_, ...paths) => {
   return path.join(...paths);
@@ -2868,6 +2971,70 @@ ipcMain.handle('get-song-metadata', async (_, hash) => {
   } catch (error) {
     console.error('get-song-metadata error:', error);
     return null;
+  } finally {
+    if (songdataDB) {
+      songdataDB.close();
+    }
+  }
+});
+
+// sha256/md5 のリストから songdata.db に存在するものだけを返す（コース生成の所持チェック用）
+ipcMain.handle('check-songs-exist', async (_, sha256List, md5List) => {
+  let songdataDB = null;
+
+  try {
+    let { songdata: songdataPath } = config.dbPaths;
+    if (isDevelopment && !songdataPath) {
+      songdataPath = path.join(sampleDbPath, 'songdata.db');
+    }
+
+    if (!songdataPath || !fs.existsSync(songdataPath)) {
+      return { existingSha256: [], existingMd5: [] };
+    }
+
+    songdataDB = new sqlite3.Database(songdataPath, sqlite3.OPEN_READONLY);
+    const CHUNK_SIZE = 500;
+
+    const queryBatched = (column, values) => {
+      const chunks = [];
+      for (let i = 0; i < values.length; i += CHUNK_SIZE) {
+        chunks.push(values.slice(i, i + CHUNK_SIZE));
+      }
+
+      return chunks.reduce((promise, chunk) => {
+        return promise.then((accumulator) =>
+          new Promise((resolve, reject) => {
+            const placeholders = chunk.map(() => '?').join(',');
+            songdataDB.all(
+              `SELECT ${column} FROM song WHERE ${column} IN (${placeholders})`,
+              chunk,
+              (err, rows) => {
+                if (err) {
+                  reject(err);
+                } else {
+                  resolve([...accumulator, ...rows.map((row) => row[column])]);
+                }
+              }
+            );
+          })
+        );
+      }, Promise.resolve([]));
+    };
+
+    const existingSha256 =
+      Array.isArray(sha256List) && sha256List.length > 0
+        ? await queryBatched('sha256', sha256List)
+        : [];
+
+    const existingMd5 =
+      Array.isArray(md5List) && md5List.length > 0
+        ? await queryBatched('md5', md5List)
+        : [];
+
+    return { existingSha256, existingMd5 };
+  } catch (error) {
+    console.error('check-songs-exist error:', error);
+    return { existingSha256: [], existingMd5: [] };
   } finally {
     if (songdataDB) {
       songdataDB.close();
