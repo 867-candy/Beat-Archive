@@ -1434,6 +1434,7 @@ let config = {
     scoredatalog: '',
     songdata: ''
   },
+  customCourseJsonPath: '',
   lastScreenshotPath: null,
   lastScreenshotDirectory: null
 };
@@ -1445,6 +1446,20 @@ function loadConfig() {
   if (fs.existsSync(configPath)) {
     try {
       config = JSON.parse(fs.readFileSync(configPath));
+      if (typeof config.customCourseJsonPath !== 'string') {
+        config.customCourseJsonPath = '';
+      }
+      if (!config.dbPaths) {
+        config.dbPaths = {
+          score: '',
+          scorelog: '',
+          scoredatalog: '',
+          songdata: ''
+        };
+      }
+      if (!Array.isArray(config.difficultyTables)) {
+        config.difficultyTables = [];
+      }
       console.log('既存の設定ファイルを読み込みました:', configPath);
       return;
     } catch (error) {
@@ -1504,6 +1519,7 @@ function createDefaultConfig() {
       scoredatalog: '',
       songdata: ''
     },
+    customCourseJsonPath: '',
     difficultyTables: []
   };
   
@@ -2209,6 +2225,165 @@ ipcMain.handle('select-folder-path', async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
+// カスタムコース保存JSONファイルを選択
+ipcMain.handle('select-course-json-path', async () => {
+  const defaultPath =
+    (typeof config.customCourseJsonPath === 'string' && config.customCourseJsonPath.trim() !== '')
+      ? config.customCourseJsonPath
+      : path.join(app.getPath('documents'), 'default.json');
+
+  const result = await dialog.showSaveDialog({
+    title: 'カスタムコース保存先を選択',
+    defaultPath,
+    filters: [{ name: 'JSON Files', extensions: ['json'] }]
+  });
+
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
+
+  return result.filePath;
+});
+
+// カスタムコースをdefault.json互換フォーマットで保存
+ipcMain.handle('save-custom-course', async (_, courseData, targetFilePath) => {
+  try {
+    if (!courseData || typeof courseData !== 'object') {
+      throw new Error('保存するコースデータが不正です。');
+    }
+
+    if (!targetFilePath || typeof targetFilePath !== 'string') {
+      throw new Error('保存先ファイルパスが未指定です。');
+    }
+
+    const normalizedPath = targetFilePath.toLowerCase().endsWith('.json')
+      ? targetFilePath
+      : `${targetFilePath}.json`;
+
+    const outputDir = path.dirname(normalizedPath);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    let rootData = { course: [] };
+
+    if (fs.existsSync(normalizedPath)) {
+      const existingText = fs.readFileSync(normalizedPath, 'utf8').trim();
+      if (existingText !== '') {
+        const parsed = JSON.parse(existingText);
+
+        if (Array.isArray(parsed)) {
+          rootData = { course: parsed };
+        } else if (parsed && typeof parsed === 'object') {
+          rootData = parsed;
+          if (!Array.isArray(rootData.course)) {
+            if (!Object.prototype.hasOwnProperty.call(rootData, 'course')) {
+              rootData.course = [];
+            } else {
+              throw new Error('既存JSONのcourseが配列ではありません。');
+            }
+          }
+        } else {
+          throw new Error('既存JSONの形式を解釈できません。');
+        }
+      }
+    }
+
+    rootData.course.push(courseData);
+    fs.writeFileSync(normalizedPath, JSON.stringify(rootData, null, 2), 'utf8');
+
+    config.customCourseJsonPath = normalizedPath;
+    saveConfig();
+
+    return {
+      success: true,
+      filePath: normalizedPath,
+      totalCourses: rootData.course.length
+    };
+  } catch (error) {
+    console.error('カスタムコース保存エラー:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// カスタムコースJSONから既存コース一覧を読み込み
+ipcMain.handle('load-custom-course-file', async (_, targetFilePath) => {
+  try {
+    if (!targetFilePath || typeof targetFilePath !== 'string') {
+      return {
+        success: true,
+        exists: false,
+        filePath: '',
+        tableName: '',
+        courses: []
+      };
+    }
+
+    const normalizedPath = targetFilePath.toLowerCase().endsWith('.json')
+      ? targetFilePath
+      : `${targetFilePath}.json`;
+
+    if (!fs.existsSync(normalizedPath)) {
+      return {
+        success: true,
+        exists: false,
+        filePath: normalizedPath,
+        tableName: '',
+        courses: []
+      };
+    }
+
+    const existingText = fs.readFileSync(normalizedPath, 'utf8').trim();
+    if (existingText === '') {
+      return {
+        success: true,
+        exists: true,
+        filePath: normalizedPath,
+        tableName: '',
+        courses: []
+      };
+    }
+
+    const parsed = JSON.parse(existingText);
+    let rootData = { name: '', course: [] };
+
+    if (Array.isArray(parsed)) {
+      rootData = {
+        name: '',
+        course: parsed
+      };
+    } else if (parsed && typeof parsed === 'object') {
+      rootData = {
+        name: typeof parsed.name === 'string' ? parsed.name : '',
+        course: Array.isArray(parsed.course) ? parsed.course : []
+      };
+    } else {
+      throw new Error('既存JSONの形式を解釈できません。');
+    }
+
+    return {
+      success: true,
+      exists: true,
+      filePath: normalizedPath,
+      tableName: rootData.name,
+      courses: rootData.course
+    };
+  } catch (error) {
+    console.error('カスタムコース読込エラー:', error);
+    return {
+      success: false,
+      error: error.message,
+      exists: false,
+      filePath: targetFilePath || '',
+      tableName: '',
+      courses: []
+    };
+  }
+});
+
 // パス結合
 ipcMain.handle('join-path', (_, ...paths) => {
   return path.join(...paths);
@@ -2644,6 +2819,59 @@ ipcMain.handle('get-song-score', async (_, hash) => {
   } catch (error) {
     console.error('楽曲スコア取得エラー:', error);
     return null;
+  }
+});
+
+// 楽曲メタデータを取得（songdata.db）
+ipcMain.handle('get-song-metadata', async (_, hash) => {
+  let songdataDB = null;
+
+  try {
+    let { songdata: songdataPath } = config.dbPaths;
+
+    if (isDevelopment && !songdataPath) {
+      songdataPath = path.join(sampleDbPath, 'songdata.db');
+    }
+
+    if (!songdataPath || !fs.existsSync(songdataPath)) {
+      console.log('songdata.dbが見つかりません:', songdataPath);
+      return null;
+    }
+
+    songdataDB = new sqlite3.Database(songdataPath, sqlite3.OPEN_READONLY);
+
+    const querySong = (column, value) => new Promise((resolve, reject) => {
+      songdataDB.get(
+        `SELECT * FROM song WHERE ${column} = ?`,
+        [value],
+        (err, row) => {
+          if (err) {
+            console.error('Song metadata query error:', err);
+            reject(err);
+          } else {
+            resolve(row || null);
+          }
+        }
+      );
+    });
+
+    if (hash.length === 64) {
+      return await querySong('sha256', hash);
+    }
+
+    if (hash.length === 32) {
+      return await querySong('md5', hash);
+    }
+
+    console.log(`Invalid hash length for metadata: ${hash.length}`);
+    return null;
+  } catch (error) {
+    console.error('get-song-metadata error:', error);
+    return null;
+  } finally {
+    if (songdataDB) {
+      songdataDB.close();
+    }
   }
 });
 

@@ -1,0 +1,110 @@
+新たにwarmupコースを設定できる画面
+カスタムコース画面を追加します
+
+要件は以下の通りです。
+各プルダウンメニューから要素を選択してコースを作成できるようにする
+プルダウンメニュー
+・コース名
+・使用する難易度表
+・1st stageの難易度 (★1,★2 などを指定)
+・2nd stageの難易度 (★1,★2 などを指定)
+・3rd stageの難易度 (★1,★2 などを指定)
+・final stageの難易度 (★1,★2 などを指定)
+・オプションの設定 (class,MIRROR,RANDOM)
+・ゲージの設定 (GAUGE_LR2,GAUGE_7keys,GAUGE_5keys,GAUGE_9eys,GAUGE_24keys)
+・LNタイプの設定(LN,CN,HCN)
+・ノースピの設定 ({blank},NO_SPEED)
+・グッドの設定 ({blank},NO_GOOD)
+・トロフィーの設定 (ブロンズメダル、シルバーメダル、ゴールドメダル)
+
+各ステージで選択した難易度をもとに、各難易度からランダムで曲を選択してjsonファイルに保存する
+
+default.jsonの例 default.jsonのパス E:\beatoraja0.8.4-jre-win64\table 
+"course": [
+	{
+		"class": "bms.player.beatoraja.CourseData",
+		"name": "test",
+		"hash": [
+			{
+				"title": "ニニ",
+				"subtitle": "- ニサシゴ -",
+				"genre": "ORIENTAL CORE",
+				"artist": "テヅカ × Qayo",
+				"subartist": "BGI: MUSH.T × PHage / OBJ: swa",
+				"md5": "1bc98542eaf7f0cccfb4026bb3c25f49",
+				"sha256": "92a62a24588968de566b56fceb6c8b761401ea1de31ce7bad5dadee14a26bd35",
+				"content": 3,
+				"stagefile": "nini_title.png",
+				"backbmp": "nini_backbmp.png",
+				"banner": "nini_banner.png",
+				"charthash": "59b7e18628fe59d6335f507146c7e8fcf3d2fcb20c85124104a72b82555c4e78"
+			},
+			{
+				"title": "ニニ -弐-",
+				"genre": "ORIENTAL CORE",
+				"artist": "テヅカ × Qayo/obj.matsu",
+				"subartist": "BGI: MUSH.T × PHage",
+				"md5": "fbf4371f1a67d9461ead494ff844c2f7",
+				"sha256": "2d5599398328a4497e75ebcd8c7134e955c67399e25ccf604c89cf543d8679c1",
+				"content": 3,
+				"stagefile": "nini_title.png",
+				"backbmp": "nini_backbmp.png",
+				"banner": "nini_banner.png",
+				"charthash": "34a8068612461d7485a161cc6a1af681c69f783d61de18b7d719e09bf6786862"
+			},
+			{
+				"title": "ニニ -弐-",
+				"genre": "ORIENTAL CORE",
+				"artist": "テヅカ × Qayo/obj.matsu",
+				"subartist": "BGI: MUSH.T × PHage",
+				"md5": "fbf4371f1a67d9461ead494ff844c2f7",
+				"sha256": "2d5599398328a4497e75ebcd8c7134e955c67399e25ccf604c89cf543d8679c1",
+				"content": 3,
+				"stagefile": "nini_title.png",
+				"backbmp": "nini_backbmp.png",
+				"banner": "nini_banner.png",
+				"charthash": "34a8068612461d7485a161cc6a1af681c69f783d61de18b7d719e09bf6786862"
+			},
+			{
+				"title": "ニニ -弐-",
+				"genre": "ORIENTAL CORE",
+				"artist": "テヅカ × Qayo/obj.matsu",
+				"subartist": "BGI: MUSH.T × PHage",
+				"md5": "fbf4371f1a67d9461ead494ff844c2f7",
+				"sha256": "2d5599398328a4497e75ebcd8c7134e955c67399e25ccf604c89cf543d8679c1",
+				"content": 3,
+				"stagefile": "nini_title.png",
+				"backbmp": "nini_backbmp.png",
+				"banner": "nini_banner.png",
+				"charthash": "34a8068612461d7485a161cc6a1af681c69f783d61de18b7d719e09bf6786862"
+			}
+		],
+		"constraint": [
+			"CLASS",
+			"NO_SPEED",
+			"NO_GOOD",
+			"GAUGE_LR2",
+			"LN"
+		],
+		"trophy": [
+			{
+				"class": "bms.player.beatoraja.CourseData$TrophyData",
+				"name": "bronzemedal",
+				"missrate": 7.5,
+				"scorerate": 55
+			},
+			{
+				"class": "bms.player.beatoraja.CourseData$TrophyData",
+				"name": "silvermedal",
+				"missrate": 5,
+				"scorerate": 70
+			},
+			{
+				"class": "bms.player.beatoraja.CourseData$TrophyData",
+				"name": "goldmedal",
+				"missrate": 2.5,
+				"scorerate": 85
+			}
+		]
+	}
+]
